@@ -517,7 +517,7 @@ export default function App() {
             </h1>
           </div>
 
-          <span className="hidden sm:inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+          <span className="hidden sm:inline-block text-sm font-semibold px-3 pt-1.5 pb-2.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 translate-y-2.5">
             {settings.mode === 'AI' ? `VS AI (${settings.aiDifficulty})` : 'Pass & Play'}
           </span>
         </div>

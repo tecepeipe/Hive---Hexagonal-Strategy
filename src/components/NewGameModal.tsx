@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AIDifficulty, ExpansionsConfig, GameMode, GameSettings } from '../types/hive';
-import { Bot, Users, Sparkles, Shield, Play } from 'lucide-react';
+import { Bot, Users, Sparkles, Shield, Play, BookOpen } from 'lucide-react';
+import { RulesModal } from './RulesModal';
 
 interface NewGameModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     ladybug: true,
     pillbug: true,
   });
+  const [showRules, setShowRules] = useState(false);
 
   if (!isOpen) return null;
 
@@ -157,7 +159,20 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             <span>Start Game</span>
           </button>
         </div>
+
+        {/* Learn to Play link */}
+        <div className="mt-4 flex justify-center">
+          <button
+            onClick={() => setShowRules(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800/60"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Learn to Play</span>
+          </button>
+        </div>
       </div>
+
+      <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 };
