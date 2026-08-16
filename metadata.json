@@ -1,6 +1,6 @@
 {
-  "name": "Hive Board Game",
-  "description": "Turn-based hex strategy board game based on Hive with AI, rule enforcement, expansions, and Kotlin source exporter.",
+  "name": "Bugz Strategy",
+  "description": "Turn-based hex strategy board game with AI, rule enforcement, expansions, and Kotlin source exporter.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

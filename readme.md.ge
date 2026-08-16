@@ -1,0 +1,59 @@
+# 🐝 Bugz Strategy
+
+**Bugz Strategy** ist ein rundenbasiertes Hexagon-Strategiespiel für zwei Spieler. Führe deinen Insektenschwarm in die Schlacht: Platziere und bewege deine Insekten rund um die Bienenkönigin und versuche, die Königin des Gegners einzukreisen, bevor er es tut.
+
+## Features
+
+- Hexagon-Strategie für zwei Spieler mit KI-Gegnern und vollständiger Regelkontrolle.
+- **Weitersagen & Spielen** (gleiches Gerät) und **Gegen KI**-Modus mit drei Schwierigkeitsgraden (Leicht / Mittel / Schwer).
+- Vollständige Regelkontrolle mit Hervorhebung legaler Züge, Warnung zur Königin und automatischen Zwangspässen.
+- Erweiterungen: **Mücke** 🦟, **Marienkäfer** 🐞, **Assel** 💊.
+- Unbegrenztes Rückgängigmachen, Zugverlauf und ein zoombares/verschiebbares Hexagonbrett.
+- Integrierter **Kotlin-Code-Viewer & -Export** (das Spiel erscheint auch als native Jetpack-Compose-App).
+- In **7 Sprachen** verfügbar, mit hellem/dunklem Design.
+
+## So spielst du
+
+**Ziel:** Kreise die Bienenkönigin des Gegners mit deinen Kacheln auf allen sechs Seiten ein. Wer das zuerst schafft, gewinnt; sind beide Königinnen gleichzeitig eingekreist, gibt es ein Unentschieden.
+
+In deinem Zug **platzierst du ein Insekt** aus deiner Reserve oder **bewegst eines deiner Insekten**:
+
+- Deine Bienenkönigin muss bis zu deinem **4. Zug** eingeführt werden.
+- Deine erste Kachel darf überall hin; spätere müssen eine eigene Kachel berühren (und dürfen außer bei der zweiten Platzierung keine gegnerische Kachel berühren).
+- Der Schwarm muss immer verbunden bleiben: Du darfst ihn nie spalten oder eine Kachel in einen Spalt zwischen gestapelten Kacheln quetschen.
+
+| Insekt | Bewegung |
+|--------|----------|
+| 🐝 Bienenkönigin | Genau 1 Feld pro Zug |
+| 🕷️ Spinne | Genau 3 Felder entlang der Außenkante, nie rückwärts |
+| 🪲 Käfer | 1 Feld; kann auf andere Kacheln (auch die Königin) klettern, um sie zu blockieren |
+| 🦗 Heuschrecke | Springt in gerader Linie über mindestens eine Kachel auf das erste leere Feld |
+| 🐜 Soldatenameise | Gleitet beliebig weit entlang der Außenseite des Schwarms |
+| 🦟 Mücke | Kopiert die Bewegung (oder Assel-Fähigkeit) jeder berührten Kachel |
+| 🐞 Marienkäfer | 2 Felder über dem Schwarm, dann 1 zurück aufs Brett |
+| 🪳 Assel | Kann sich selbst nicht bewegen; bewegt eine benachbarte Kachel 2 Felder und benommen sie für den nächsten Zug des Gegners |
+
+## Spielmodi
+
+- **Weitersagen & Spielen** — zwei Spieler teilen sich ein Gerät.
+- **Gegen KI** — spiele gegen die Engine auf Leicht (zufällig), Mittel (gierig) oder Schwer (tiefe Minimax-Suche).
+
+## Sprachen
+
+Englisch, Spanisch, brasilianisches Portugiesisch, Französisch, Deutsch, Japanisch und Chinesisch — im Spiel umschaltbar.
+
+## Plattformen
+
+- **Web:** Vite + React 19 + TypeScript + Tailwind CSS.
+- **Android:** native Jetpack-Compose-App (Paket `com.tecepeipe.bugzstrategy`), dieselbe Engine wie die Webversion, mit Speichern/Fortsetzen und vollständigen Qualitätskontrollen.
+
+## Build
+
+```bash
+npm install        # von android-tools/ (gemeinsame Abhängigkeiten)
+npm run dev        # Vite-Dev-Server auf Port 3000
+npm run lint       # TypeScript-Typcheck (tsc --noEmit)
+npm run build      # statisches Bundle nach dist/
+
+android-tools/build_apk.sh /home/fabricio/bugz-strategy   # natives Android-APK
+```

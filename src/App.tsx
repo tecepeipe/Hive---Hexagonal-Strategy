@@ -13,7 +13,7 @@ import {
   MoveLogEntry,
   Piece,
   Player,
-} from './types/hive';
+} from './types/bugz';
 import {
   checkGameStatus,
   cloneBoard,
@@ -24,8 +24,8 @@ import {
   getValidMovesForPiece,
   getValidPlacements,
   isQueenPlaced,
-} from './logic/hiveRules';
-import { computeAIMove } from './logic/hiveAI';
+} from './logic/bugzRules';
+import { computeAIMove } from './logic/bugzAI';
 
 import { HexBoard } from './components/HexBoard';
 import { ReservePanel } from './components/ReservePanel';
@@ -33,6 +33,8 @@ import { MoveLog } from './components/MoveLog';
 import { NewGameModal } from './components/NewGameModal';
 import { GameOverModal } from './components/GameOverModal';
 import { KotlinCodeViewer } from './components/KotlinCodeViewer';
+
+import { I18nProvider, LanguageSwitcher, useI18n } from './utils/i18n';
 
 import {
   RotateCcw,
@@ -47,7 +49,16 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
-export default function App() {
+export default function BugzApp() {
+  return (
+    <I18nProvider>
+      <App />
+    </I18nProvider>
+  );
+}
+
+function App() {
+  const { t } = useI18n();
   // --- GAME CONFIGURATION ---
   const [settings, setSettings] = useState<GameSettings>({
     mode: 'AI',
@@ -221,7 +232,7 @@ export default function App() {
 
     if (legalActions.length === 0 && (board.size > 0 || p1Reserve.length > 0)) {
       // Player has NO legal moves or placements -> Forced Pass!
-      setToastMessage(`Player ${currentPlayer} has no legal moves available. Turn passed!`);
+      setToastMessage(t('toastForcedPass', { n: currentPlayer }));
       setTimeout(() => setToastMessage(null), 3000);
 
       // Record pass in history
@@ -230,7 +241,7 @@ export default function App() {
         player: currentPlayer,
         actionType: 'PASS',
         bugType: 'QUEEN',
-        description: `Player ${currentPlayer} was forced to pass turn.`,
+        description: t('passLogDesc', { n: currentPlayer }),
       };
       setMoveHistory(prev => [...prev, passLog]);
 
@@ -270,7 +281,7 @@ export default function App() {
           executeMove(aiAction);
         } else {
           // AI forced pass
-          setToastMessage(`AI (Player 2) has no valid moves. Turn passed!`);
+          setToastMessage(t('toastAiPass'));
           setTimeout(() => setToastMessage(null), 3000);
           setCurrentPlayer(1);
         }
@@ -319,7 +330,7 @@ export default function App() {
       const stack = nextBoard.get(key) || [];
       nextBoard.set(key, [...stack, newPiece]);
 
-      logDesc = `Placed ${BUG_DEFINITIONS[action.bugType].name} at (${action.toHex.q}, ${action.toHex.r})`;
+      logDesc = t('placedDesc', { bug: BUG_DEFINITIONS[action.bugType].name, q: action.toHex.q, r: action.toHex.r });
       setLastMovedHex({ to: action.toHex });
     } else if (action.type === 'MOVE' && action.fromHex) {
       const fromKey = hexKey(action.fromHex.q, action.fromHex.r);
@@ -334,7 +345,7 @@ export default function App() {
         nextBoard.set(toKey, [...toStack, movedPiece]);
       }
 
-      logDesc = `Moved ${BUG_DEFINITIONS[action.bugType].name} from (${action.fromHex.q}, ${action.fromHex.r}) to (${action.toHex.q}, ${action.toHex.r})`;
+      logDesc = t('movedDesc', { bug: BUG_DEFINITIONS[action.bugType].name, q1: action.fromHex.q, r1: action.fromHex.r, q2: action.toHex.q, r2: action.toHex.r });
       setLastMovedHex({ from: action.fromHex, to: action.toHex });
     } else if (action.type === 'PILLBUG_SPECIAL' && action.pillbugTargetHex) {
       const targetKey = hexKey(action.pillbugTargetHex.q, action.pillbugTargetHex.r);
@@ -349,7 +360,7 @@ export default function App() {
         nextBoard.set(toKey, [...toStack, movedPiece]);
       }
 
-      logDesc = `Pillbug moved ${movedPiece ? BUG_DEFINITIONS[movedPiece.type].name : 'piece'} from (${action.pillbugTargetHex.q}, ${action.pillbugTargetHex.r}) to (${action.toHex.q}, ${action.toHex.r})`;
+      logDesc = t('pillbugMovedDesc', { bug: movedPiece ? BUG_DEFINITIONS[movedPiece.type].name : 'piece', q1: action.pillbugTargetHex.q, r1: action.pillbugTargetHex.r, q2: action.toHex.q, r2: action.toHex.r });
       setLastMovedHex({ from: action.pillbugTargetHex, to: action.toHex });
     }
 
@@ -513,12 +524,14 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-2xl">🐝</span>
             <h1 className="text-lg font-black tracking-tight text-amber-400">
-              HIVE <span className="text-slate-400 text-xs font-normal">Strategy</span>
+              {t('appTitle')} <span className="text-slate-400 text-xs font-normal">{t('appSubtitle')}</span>
             </h1>
           </div>
 
           <span className="hidden sm:inline-block text-sm font-semibold px-3 pt-1.5 pb-2.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 translate-y-2.5">
-            {settings.mode === 'AI' ? `VS AI (${settings.aiDifficulty})` : 'Pass & Play'}
+            {settings.mode === 'AI'
+              ? t('vsAi', { diff: t(settings.aiDifficulty === 'EASY' ? 'easyBtn' : settings.aiDifficulty === 'MEDIUM' ? 'mediumBtn' : 'hardBtn') })
+              : t('passAndPlay')}
           </span>
         </div>
 
@@ -538,13 +551,14 @@ export default function App() {
             />
             <span>
               {isAITurn
-                ? 'AI Thinking...'
-                : `Player ${currentPlayer}'s Turn (${currentPlayer === 1 ? 'White' : 'Black'})`}
+                ? t('aiThinking')
+                : t('playersTurn', { n: currentPlayer, color: currentPlayer === 1 ? t('white') : t('black') })}
             </span>
           </div>
 
           {/* Controls */}
           <div className="flex items-center gap-1">
+            <LanguageSwitcher className="!px-1.5 !py-1" />
             <button
               onClick={handleUndo}
               disabled={snapshots.length === 0 || isAITurn}
@@ -553,7 +567,7 @@ export default function App() {
                   ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white'
                   : 'bg-slate-950/50 border-slate-800/50 text-slate-600 cursor-not-allowed'
               }`}
-              title="Undo Move (Unlimited Step Rewind)"
+              title={t('undoTitle')}
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -561,7 +575,7 @@ export default function App() {
             <button
               onClick={() => setIsNewGameModalOpen(true)}
               className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
-              title="New Game / Match Settings"
+              title={t('newGameTitle')}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -569,10 +583,10 @@ export default function App() {
             <button
               onClick={() => setIsKotlinModalOpen(true)}
               className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 transition-colors flex items-center gap-1.5 text-xs font-bold"
-              title="View & Export Android Kotlin Compose Code"
+              title={t('kotlinTitle')}
             >
               <Code2 className="w-4 h-4" />
-              <span className="hidden md:inline">Kotlin Source</span>
+              <span className="hidden md:inline">{t('kotlinSource')}</span>
             </button>
           </div>
         </div>
@@ -599,7 +613,6 @@ export default function App() {
             onSelectBugType={handleSelectReserveBug}
             turnCount={turnCountP1}
             queenPlaced={isQueenPlaced(board, 1)}
-            isAITurn={settings.mode === 'AI' && settings.humanColor === 'BLACK'}
           />
 
           {/* Player 2 Reserve (Black - Underneath Player 1) */}
@@ -611,7 +624,6 @@ export default function App() {
             onSelectBugType={handleSelectReserveBug}
             turnCount={turnCountP2}
             queenPlaced={isQueenPlaced(board, 2)}
-            isAITurn={settings.mode === 'AI' && settings.humanColor === 'WHITE'}
           />
         </div>
 
@@ -646,11 +658,6 @@ export default function App() {
             onSelectBugType={handleSelectReserveBug}
             turnCount={currentPlayer === 1 ? turnCountP1 : turnCountP2}
             queenPlaced={isQueenPlaced(board, currentPlayer)}
-            isAITurn={
-              settings.mode === 'AI' &&
-              ((settings.humanColor === 'WHITE' && currentPlayer === 2) ||
-                (settings.humanColor === 'BLACK' && currentPlayer === 1))
-            }
           />
         </div>
       </div>

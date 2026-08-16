@@ -1,0 +1,59 @@
+# 🐝 Bugz Strategy
+
+**Bugz Strategy** est un jeu de stratégie hexagonal au tour par tour pour deux joueurs. Menez votre essaim d'insectes au combat : placez et déplacez vos insectes autour de la reine et essayez d'encercler la reine adverse avant qu'elle n'encercle la vôtre.
+
+## Caractéristiques
+
+- Stratégie hexagonale pour deux joueurs avec adversaires IA et application complète des règles.
+- Modes **Passe et joue** (même appareil) et **VS IA** avec trois difficultés (Facile / Moyen / Difficile).
+- Application complète des règles avec mise en évidence des coups légaux, avertissement de la reine et passes forcées automatiques.
+- Extensions : **Moustique** 🦟, **Coccinelle** 🐞, **Cloporte** 💊.
+- Annulation illimitée, historique des coups et plateau hexagonal avec zoom et déplacement.
+- **Visionneuse et exportateur de code Kotlin** intégrés (le jeu est aussi une app native Jetpack Compose).
+- Disponible en **7 langues** avec thème clair et sombre.
+
+## Comment jouer
+
+**Objectif :** encerclez la reine adverse avec vos pièces sur les six côtés. Le premier à y parvenir gagne ; si les deux reines sont encerclées en même temps, c'est une égalité.
+
+À votre tour, vous **placez un insecte** de votre réserve ou **déplacez un de vos insectes** :
+
+- Votre reine doit être introduite avant votre **4e tour**.
+- Votre première pièce se place n'importe où ; les suivantes doivent toucher une de vos pièces (et, sauf pour la deuxième pose, ne peuvent pas toucher une pièce adverse).
+- L'essaim doit toujours rester connecté : vous ne pouvez jamais le diviser ni glisser une pièce dans un espace entre pièces empilées.
+
+| Insecte | Déplacement |
+|---------|-------------|
+| 🐝 Reine | Exactement 1 hexagone par tour |
+| 🕷️ Araignée | Exactement 3 hexagones le long du bord, sans revenir en arrière |
+| 🪲 Scarabée | 1 hexagone ; peut grimper sur d'autres pièces (même la reine) pour les bloquer |
+| 🦗 Sauterelle | Saute en ligne droite par-dessus au moins une pièce et atterrit sur le premier hexagone vide |
+| 🐜 Fourmi soldat | Glisse n'importe quelle distance le long de l'extérieur de l'essaim |
+| 🦟 Moustique | Copie le déplacement (ou l'aptitude du cloporte) de toute pièce qu'il touche |
+| 🐞 Coccinelle | 2 hexagones au-dessus de l'essaim, puis 1 de retour sur le plateau |
+| 🪳 Cloporte | Ne peut pas se déplacer ; déplace une pièce adjacente de 2 hexagones et l'étourdit pour le tour adverse suivant |
+
+## Modes de jeu
+
+- **Passe et joue** — deux joueurs partagent un appareil.
+- **VS IA** — jouez contre le moteur en Facile (aléatoire), Moyen (glouton) ou Difficile (recherche minimax profonde).
+
+## Langues
+
+Anglais, espagnol, portugais du Brésil, français, allemand, japonais et chinois — sélectionnables dans le jeu.
+
+## Plateformes
+
+- **Web :** Vite + React 19 + TypeScript + Tailwind CSS.
+- **Android :** app native Jetpack Compose (paquet `com.tecepeipe.bugzstrategy`), le même moteur que la version web, avec sauvegarde/reprise et contrôles de qualité.
+
+## Compilation
+
+```bash
+npm install        # depuis android-tools/ (dépendances partagées)
+npm run dev        # serveur de développement Vite sur le port 3000
+npm run lint       # vérification des types (tsc --noEmit)
+npm run build      # bundle statique dans dist/
+
+android-tools/build_apk.sh /home/fabricio/bugz-strategy   # APK natif Android
+```

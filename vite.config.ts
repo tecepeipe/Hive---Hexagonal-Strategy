@@ -6,6 +6,8 @@ import {defineConfig} from 'vite';
 export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
+    // Relative asset paths so the built bundle can be hosted under any subpath.
+    base: './',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

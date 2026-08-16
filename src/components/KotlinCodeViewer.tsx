@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KOTLIN_APP_SOURCE } from '../kotlinCode';
 import { Code2, Copy, Check, Download, X } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface KotlinCodeViewerProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface KotlinCodeViewerProps {
 }
 
 export const KotlinCodeViewer: React.FC<KotlinCodeViewerProps> = ({ isOpen, onClose }) => {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -23,7 +25,7 @@ export const KotlinCodeViewer: React.FC<KotlinCodeViewerProps> = ({ isOpen, onCl
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'HiveApp.kt';
+    a.download = 'BugzApp.kt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -41,13 +43,13 @@ export const KotlinCodeViewer: React.FC<KotlinCodeViewerProps> = ({ isOpen, onCl
             </div>
             <div>
               <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
-                <span>Single-File Android Source Code</span>
+                <span>{t('codeTitle')}</span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
-                  HiveApp.kt (Jetpack Compose)
+                  {t('codeBadge')}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Complete Kotlin application logic, Compose canvas, AI minimax, and game loop.
+                {t('codeDesc')}
               </p>
             </div>
           </div>
@@ -58,7 +60,7 @@ export const KotlinCodeViewer: React.FC<KotlinCodeViewerProps> = ({ isOpen, onCl
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? 'Copied!' : 'Copy Code'}</span>
+              <span>{copied ? t('copied') : t('copyCode')}</span>
             </button>
 
             <button
@@ -66,7 +68,7 @@ export const KotlinCodeViewer: React.FC<KotlinCodeViewerProps> = ({ isOpen, onCl
               className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-colors"
             >
               <Download className="w-4 h-4" />
-              <span>Download .kt</span>
+              <span>{t('downloadKt')}</span>
             </button>
 
             <button

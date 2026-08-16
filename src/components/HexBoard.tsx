@@ -7,7 +7,7 @@ import {
   hexKey,
   Piece,
   Player,
-} from '../types/hive';
+} from '../types/bugz';
 import {
   getHexCornerPoints,
   getAllNeighbors,
@@ -15,8 +15,9 @@ import {
   isSameHex,
   pixelToHex,
 } from '../logic/hexMath';
-import { getStackHeight, getTopPiece } from '../logic/hiveRules';
+import { getStackHeight, getTopPiece } from '../logic/bugzRules';
 import { ZoomIn, ZoomOut, Maximize2, Move } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface HexBoardProps {
   board: BoardState;
@@ -45,6 +46,7 @@ export const HexBoard: React.FC<HexBoardProps> = ({
   isAITurn,
   lastMovedHex,
 }) => {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Pan & Zoom state
@@ -149,21 +151,21 @@ export const HexBoard: React.FC<HexBoardProps> = ({
         <button
           onClick={() => setZoom(z => Math.min(z * 1.2, 2.5))}
           className="p-2 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition-colors"
-          title="Zoom In"
+          title={t('zoomIn')}
         >
           <ZoomIn className="w-5 h-5" />
         </button>
         <button
           onClick={() => setZoom(z => Math.max(z / 1.2, 0.4))}
           className="p-2 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition-colors"
-          title="Zoom Out"
+          title={t('zoomOut')}
         >
           <ZoomOut className="w-5 h-5" />
         </button>
         <button
           onClick={handleRecenter}
           className="p-2 hover:bg-slate-700 text-amber-400 hover:text-amber-300 rounded-lg transition-colors"
-          title="Recenter Board"
+          title={t('recenter')}
         >
           <Maximize2 className="w-5 h-5" />
         </button>
@@ -172,7 +174,7 @@ export const HexBoard: React.FC<HexBoardProps> = ({
       {/* Turn indicator watermark */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none bg-slate-950/60 backdrop-blur border border-slate-800 px-3 py-1.5 rounded-full text-xs font-semibold text-slate-400 flex items-center gap-2">
         <Move className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-        <span>Drag canvas to pan • Scroll to zoom</span>
+        <span>{t('panHint')}</span>
       </div>
 
       {/* Main SVG Grid Stage */}

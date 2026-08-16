@@ -1,6 +1,7 @@
 import React from 'react';
-import { BUG_DEFINITIONS, BugType, Piece, Player } from '../types/hive';
+import { BUG_DEFINITIONS, BugType, Piece, Player } from '../types/bugz';
 import { AlertCircle } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface ReservePanelProps {
   player: Player;
@@ -10,7 +11,6 @@ interface ReservePanelProps {
   onSelectBugType: (bugType: BugType) => void;
   turnCount: number;
   queenPlaced: boolean;
-  isAITurn?: boolean;
 }
 
 export const ReservePanel: React.FC<ReservePanelProps> = ({
@@ -21,8 +21,8 @@ export const ReservePanel: React.FC<ReservePanelProps> = ({
   onSelectBugType,
   turnCount,
   queenPlaced,
-  isAITurn = false,
 }) => {
+  const { t } = useI18n();
   // Group reserve pieces by bug type
   const groupedReserve = new Map<BugType, Piece[]>();
   for (const piece of reserve) {
@@ -51,11 +51,11 @@ export const ReservePanel: React.FC<ReservePanelProps> = ({
             }`}
           />
           <h3 className="font-bold text-sm text-slate-100">
-            Player {player} {player === 1 ? '(White)' : '(Black)'}
+            {t('playerLabel', { n: player, color: player === 1 ? t('white') : t('black') })}
           </h3>
         </div>
         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-          Reserve ({reserve.length})
+          {t('reserveCount', { n: reserve.length })}
         </span>
       </div>
 
@@ -63,7 +63,7 @@ export const ReservePanel: React.FC<ReservePanelProps> = ({
       {isTurn4MustPlaceQueen && isActive && (
         <div className="mb-3 p-2 bg-amber-500/20 border border-amber-500/50 rounded-lg text-amber-300 text-xs flex items-center gap-1.5 animate-bounce">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>Turn 4 Mandatory: You MUST place your Queen Bee!</span>
+          <span>{t('turn4Warning')}</span>
         </div>
       )}
 
@@ -77,7 +77,6 @@ export const ReservePanel: React.FC<ReservePanelProps> = ({
           // If turn 4 and queen not placed, disable all other pieces
           const isDisabled =
             !isActive ||
-            isAITurn ||
             count === 0 ||
             (isTurn4MustPlaceQueen && bugType !== 'QUEEN');
 

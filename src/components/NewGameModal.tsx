@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { AIDifficulty, ExpansionsConfig, GameMode, GameSettings } from '../types/hive';
+import { AIDifficulty, ExpansionsConfig, GameMode, GameSettings } from '../types/bugz';
 import { Bot, Users, Sparkles, Shield, Play, BookOpen } from 'lucide-react';
 import { RulesModal } from './RulesModal';
+import { useI18n } from '../utils/i18n';
 
 interface NewGameModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   onClose,
   canCancel = false,
 }) => {
+  const { t } = useI18n();
   const [mode, setMode] = useState<GameMode>('AI');
   const [aiDifficulty, setAIDifficulty] = useState<AIDifficulty>('MEDIUM');
   const [expansions, setExpansions] = useState<ExpansionsConfig>({
@@ -34,16 +36,16 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-gradient-to-r from-amber-500 via-emerald-500 to-blue-500 rounded-full" />
 
         <h2 className="text-2xl font-black text-slate-100 mb-1 flex items-center gap-2">
-          <span>🐝 Hive Board Game</span>
+          <span>🐝 {t('appTitle')} {t('appSubtitle')}</span>
         </h2>
         <p className="text-xs text-slate-400 mb-6">
-          Configure your match mode, AI strength, and expansion pieces.
+          {t('setupSubtitle')}
         </p>
 
         {/* Game Mode */}
         <div className="mb-6">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-            Game Mode
+            {t('gameModeLabel')}
           </label>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -55,7 +57,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               }`}
             >
               <Users className="w-6 h-6" />
-              <span className="text-xs font-bold">Pass & Play</span>
+              <span className="text-xs font-bold">{t('passPlayBtn')}</span>
             </button>
 
             <button
@@ -67,7 +69,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               }`}
             >
               <Bot className="w-6 h-6" />
-              <span className="text-xs font-bold">VS AI Engine</span>
+              <span className="text-xs font-bold">{t('vsAiBtn')}</span>
             </button>
           </div>
         </div>
@@ -76,7 +78,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         {mode === 'AI' && (
           <div className="mb-6 animate-fade-in">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-              AI Difficulty
+              {t('aiDifficultyLabel')}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(['EASY', 'MEDIUM', 'HARD'] as AIDifficulty[]).map(diff => (
@@ -89,7 +91,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       : 'bg-slate-800/50 border-slate-700/60 text-slate-400 hover:bg-slate-800'
                   }`}
                 >
-                  {diff === 'EASY' ? 'Easy' : diff === 'MEDIUM' ? 'Medium' : 'Hard (Minimax)'}
+                  {diff === 'EASY' ? t('easyBtn') : diff === 'MEDIUM' ? t('mediumBtn') : t('hardBtn')}
                 </button>
               ))}
             </div>
@@ -100,12 +102,12 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         <div className="mb-6">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Expansions</span>
+            <span>{t('expansionsLabel')}</span>
           </label>
           <div className="space-y-2 bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
             <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer p-1">
               <span className="flex items-center gap-2">
-                <span className="text-lg">🦟</span> The Mosquito
+                <span className="text-lg">🦟</span> {t('mosquitoLabel')}
               </span>
               <input
                 type="checkbox"
@@ -117,7 +119,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
             <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer p-1">
               <span className="flex items-center gap-2">
-                <span className="text-lg">🐞</span> The Ladybug
+                <span className="text-lg">🐞</span> {t('ladybugLabel')}
               </span>
               <input
                 type="checkbox"
@@ -129,7 +131,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
 
             <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer p-1">
               <span className="flex items-center gap-2">
-                <span className="text-lg">💊</span> The Pillbug
+                <span className="text-lg">💊</span> {t('pillbugLabel')}
               </span>
               <input
                 type="checkbox"
@@ -148,7 +150,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               onClick={onClose}
               className="flex-1 py-3 px-4 rounded-2xl border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-800 transition-colors"
             >
-              Cancel
+              {t('cancel')}
             </button>
           )}
           <button
@@ -156,7 +158,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             className="flex-1 py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-amber-500/20"
           >
             <Play className="w-4 h-4 fill-slate-950" />
-            <span>Start Game</span>
+            <span>{t('startGame')}</span>
           </button>
         </div>
 
@@ -167,7 +169,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-xl hover:bg-slate-800/60"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Learn to Play</span>
+            <span>{t('learnToPlay')}</span>
           </button>
         </div>
       </div>

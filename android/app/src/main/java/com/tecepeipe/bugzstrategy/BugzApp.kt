@@ -1,5 +1,6 @@
-export const KOTLIN_APP_SOURCE = `package com.bugz.game
+package com.tecepeipe.bugzstrategy
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,6 +12,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -34,14 +35,15 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.*
 
 // ============================================================================
@@ -57,7 +59,7 @@ private val DarkColors = darkColorScheme(
     onSurface = Color(0xFFE2E8F0),
     surfaceVariant = Color(0xFF334155),
     onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF64748B)
+    outline = Color(0xFF64748B),
 )
 
 private val LightColors = lightColorScheme(
@@ -69,8 +71,578 @@ private val LightColors = lightColorScheme(
     onSurface = Color(0xFF0F172A),
     surfaceVariant = Color(0xFFE2E8F0),
     onSurfaceVariant = Color(0xFF475569),
-    outline = Color(0xFF94A3B8)
+    outline = Color(0xFF94A3B8),
 )
+
+// ============================================================================
+// 0.5 I18N (languages: English, Spanish, Brazilian Portuguese, French, German,
+// Japanese, Chinese). The UI reads strings via tr("key"); the dictionary below
+// is keyed per language. Bug/insect names stay English (data).
+// ============================================================================
+
+enum class Lang(val nativeName: String) {
+    EN("English"),
+    ES("Español"),
+    PT("Português"),
+    FR("Français"),
+    DE("Deutsch"),
+    JA("日本語"),
+    ZH("中文"),
+}
+
+object I18n {
+    private val strings: Map<Lang, Map<String, String>> = mapOf(
+        Lang.EN to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "Game Over",
+            "topAiThinking" to "AI Thinking...",
+            "topVsAi" to "VS AI ({diff})",
+            "topPassPlay" to "Pass & Play",
+            "winnerLabel" to "Winner: {color}",
+            "turnLabel" to "Turn: P{player}",
+            "white" to "White",
+            "black" to "Black",
+            "draw" to "Draw",
+            "settings" to "Settings",
+            "passLog" to "Player {n} forced to pass (no legal moves).",
+            "aiPassLog" to "AI (Player {n}) forced to pass.",
+            "aiNoMovesToast" to "AI has no valid moves. Turn passed.",
+            "undoToast" to "Move undone.",
+            "queenDueToast" to "Queen Bee must be placed this turn (4th move rule).",
+            "moveLog" to "Move Log",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 New Bugz Game",
+            "selectMode" to "Select Game Mode:",
+            "modePassPlay" to "Pass & Play",
+            "modeVsAi" to "VS AI Engine",
+            "aiDifficulty" to "AI Difficulty:",
+            "diffEasy" to "Easy",
+            "diffMedium" to "Medium",
+            "diffHard" to "Hard",
+            "youPlayAs" to "You play as:",
+            "whiteP1" to "White (P1)",
+            "blackP2" to "Black (P2)",
+            "expansions" to "Expansions:",
+            "expMosquito" to "🦟 Mosquito",
+            "expLadybug" to "🐞 Ladybug",
+            "expPillbug" to "💊 Pillbug",
+            "startMatch" to "Start Match",
+            "learnToPlay" to "📖 Learn to Play",
+            "rulesTitle" to "How to Play Bugz",
+            "rulesGoal" to "🎯 Goal: Surround the opponent's Queen Bee with pieces on all six sides. " +
+                "First to do so wins; both surrounded at once is a draw.",
+            "rulesCoreTitle" to "📜 Core Rules",
+            "rulesCoreBody" to "• Play one piece per turn (placement) or move one of your pieces.\n" +
+                "• Your Queen Bee must be introduced by your 4th turn.\n" +
+                "• Your first piece is placed anywhere; later pieces must be placed adjacent to one " +
+                "of your pieces. Except for your second placement, pieces may not be placed touching " +
+                "an opponent's piece.\n" +
+                "• The swarm must always stay connected. You may never move a piece that would split " +
+                "the swarm, and you may not move a piece into a gap unless it still fits the " +
+                "freedom-to-move rule (no squeezing between stacked pieces).",
+            "rulesInsectsTitle" to "🦗 Insect Movements",
+            "insectQueen" to "🐝 Queen Bee — moves exactly 1 hex per turn.",
+            "insectSpider" to "🕷️ Spider — crawls exactly 3 hexes along the outside edge, never retracing.",
+            "insectBeetle" to "🪲 Beetle — moves 1 hex and can climb on top of other pieces (including a " +
+                "Queen) to block them; a beetle on top moves like a beetle over the stack.",
+            "insectGrasshopper" to "🦗 Grasshopper — jumps in a straight line over at least one piece, " +
+                "landing on the first empty hex in that line.",
+            "insectAnt" to "🐜 Soldier Ant — may slide any number of hexes along the outside of the swarm.",
+            "insectMosquito" to "🦟 Mosquito — copies the movement (or pillbug ability) of any piece it touches.",
+            "insectLadybug" to "🐞 Ladybug — moves exactly 2 hexes on top of the swarm, then 1 hex back " +
+                "down to the board (may land on empty board hexes).",
+            "insectPillbug" to "🪳 Pillbug — may not move itself, but it can move an adjacent enemy or " +
+                "friendly piece 2 hexes: up onto itself, then down into an adjacent empty space. The " +
+                "moved piece is stunned and cannot move on the opponent's next turn.",
+            "overDrawTitle" to "Draw!",
+            "overWinTitle" to "Player {n} Wins!",
+            "overDrawBody" to "Both Queens are surrounded. It's a draw!",
+            "overWinBody" to "The Queen of Player {n} is surrounded. Well played!",
+            "rematch" to "Rematch",
+            "newSetup" to "New Game Setup",
+            "resumeTitle" to "Continue your last match?",
+            "resumeBody" to "You have a saved game in progress.",
+            "resumeBtn" to "Resume",
+            "newGameBtn" to "New Game",
+            "placedLog" to "Placed {bug} at ({q}, {r})",
+            "movedLog" to "Moved {bug} from ({q1}, {r1}) to ({q2}, {r2})",
+            "pillbugLog" to "Pillbug moved {bug} from ({q1}, {r1}) to ({q2}, {r2})",
+            "gotIt" to "Got it",
+
+        ),
+        Lang.ES to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "Fin del juego",
+            "topAiThinking" to "IA pensando…",
+            "topVsAi" to "VS IA ({diff})",
+            "topPassPlay" to "Pasa y juega",
+            "winnerLabel" to "Ganador: {color}",
+            "turnLabel" to "Turno: P{player}",
+            "white" to "Blanco",
+            "black" to "Negro",
+            "draw" to "Empate",
+            "settings" to "Ajustes",
+            "passLog" to "El Jugador {n} se vio obligado a pasar (sin movimientos legales).",
+            "aiPassLog" to "La IA (Jugador {n}) se vio obligada a pasar.",
+            "aiNoMovesToast" to "La IA no tiene movimientos válidos. Turno pasado.",
+            "undoToast" to "Movimiento deshecho.",
+            "queenDueToast" to "Debes colocar la abeja reina este turno (regla del 4º turno).",
+            "moveLog" to "Registro de movimientos",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 Nueva partida de Bugz",
+            "selectMode" to "Elige el modo de juego:",
+            "modePassPlay" to "Pasa y juega",
+            "modeVsAi" to "VS Motor IA",
+            "aiDifficulty" to "Dificultad de la IA:",
+            "diffEasy" to "Fácil",
+            "diffMedium" to "Medio",
+            "diffHard" to "Difícil",
+            "youPlayAs" to "Juegas como:",
+            "whiteP1" to "Blanco (P1)",
+            "blackP2" to "Negro (P2)",
+            "expansions" to "Expansiones:",
+            "expMosquito" to "🦟 Mosquito",
+            "expLadybug" to "🐞 Mariquita",
+            "expPillbug" to "💊 Cochinilla",
+            "startMatch" to "Comenzar partida",
+            "learnToPlay" to "📖 Aprende a jugar",
+            "rulesTitle" to "Cómo jugar a Bugz",
+            "rulesGoal" to "🎯 Objetivo: rodea la abeja reina del rival con piezas por los seis lados. " +
+                "El primero en lograrlo gana; si ambas quedan rodeadas a la vez, es empate.",
+            "rulesCoreTitle" to "📜 Reglas básicas",
+            "rulesCoreBody" to "• Coloca una pieza por turno o mueve una de tus piezas.\n" +
+                "• Debes introducir tu abeja reina en tu 4º turno.\n" +
+                "• Tu primera pieza se coloca en cualquier lugar; las siguientes deben ir adyacentes a " +
+                "una de tus piezas. Salvo la segunda colocación, no puedes colocar piezas tocando " +
+                "piezas del rival.\n" +
+                "• El enjambre debe permanecer siempre conectado. Nunca muevas una pieza que dividiría " +
+                "el enjambre, ni la metas en un hueco si no respeta la regla de libertad de " +
+                "movimiento (sin apretujones entre piezas apiladas).",
+            "rulesInsectsTitle" to "🦗 Movimientos de los insectos",
+            "insectQueen" to "🐝 Abeja reina — se mueve exactamente 1 hexágono por turno.",
+            "insectSpider" to "🕷️ Araña — se arrastra exactamente 3 hexágonos por el borde exterior, sin retroceder.",
+            "insectBeetle" to "🪲 Escarabajo — se mueve 1 hexágono y puede subir sobre otras piezas " +
+                "(incluida la reina) para bloquearlas; uno arriba se mueve como un escarabajo sobre la pila.",
+            "insectGrasshopper" to "🦗 Saltamontes — salta en línea recta sobre al menos una pieza y " +
+                "aterriza en el primer hexágono vacío de esa línea.",
+            "insectAnt" to "🐜 Hormiga soldado — puede deslizarse cualquier cantidad de hexágonos por el exterior del enjambre.",
+            "insectMosquito" to "🦟 Mosquito — copia el movimiento (o la habilidad de la cochinilla) de cualquier pieza que toque.",
+            "insectLadybug" to "🐞 Mariquita — se mueve exactamente 2 hexágonos sobre el enjambre y luego " +
+                "1 hacia abajo al tablero (puede aterrizar en hexágonos vacíos).",
+            "insectPillbug" to "🪳 Cochinilla — no puede moverse, pero puede mover una pieza adyacente " +
+                "(aliada o enemiga) 2 hexágonos: primero sobre sí misma y luego a un espacio vacío " +
+                "adyacente. La pieza movida queda aturdida y no puede moverse en el siguiente turno del rival.",
+            "overDrawTitle" to "¡Empate!",
+            "overWinTitle" to "¡Gana el Jugador {n}!",
+            "overDrawBody" to "Ambas reinas están rodeadas. ¡Empate!",
+            "overWinBody" to "La reina del Jugador {n} está rodeada. ¡Bien jugado!",
+            "rematch" to "Revancha",
+            "newSetup" to "Nueva configuración",
+            "resumeTitle" to "¿Continuar tu última partida?",
+            "resumeBody" to "Tienes una partida guardada en curso.",
+            "resumeBtn" to "Continuar",
+            "newGameBtn" to "Nueva partida",
+            "placedLog" to "Colocó {bug} en ({q}, {r})",
+            "movedLog" to "Movió {bug} de ({q1}, {r1}) a ({q2}, {r2})",
+            "pillbugLog" to "La cochinilla movió {bug} de ({q1}, {r1}) a ({q2}, {r2})",
+            "gotIt" to "Entendido",
+
+        ),
+        Lang.PT to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "Fim de jogo",
+            "topAiThinking" to "IA pensando…",
+            "topVsAi" to "VS IA ({diff})",
+            "topPassPlay" to "Passa e joga",
+            "winnerLabel" to "Vencedor: {color}",
+            "turnLabel" to "Vez: P{player}",
+            "white" to "Branco",
+            "black" to "Preto",
+            "draw" to "Empate",
+            "settings" to "Ajustes",
+            "passLog" to "O Jogador {n} foi obrigado a passar (sem movimentos legais).",
+            "aiPassLog" to "A IA (Jogador {n}) foi obrigada a passar.",
+            "aiNoMovesToast" to "A IA não tem movimentos válidos. Turno passado.",
+            "undoToast" to "Movimento desfeito.",
+            "queenDueToast" to "Você deve colocar a abelha rainha neste turno (regra do 4º turno).",
+            "moveLog" to "Registro de movimentos",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 Nova partida de Bugz",
+            "selectMode" to "Escolha o modo de jogo:",
+            "modePassPlay" to "Passa e joga",
+            "modeVsAi" to "VS Motor IA",
+            "aiDifficulty" to "Dificuldade da IA:",
+            "diffEasy" to "Fácil",
+            "diffMedium" to "Médio",
+            "diffHard" to "Difícil",
+            "youPlayAs" to "Você joga como:",
+            "whiteP1" to "Branco (P1)",
+            "blackP2" to "Preto (P2)",
+            "expansions" to "Expansões:",
+            "expMosquito" to "🦟 Pernilongo",
+            "expLadybug" to "🐞 Joaninha",
+            "expPillbug" to "💊 Bicho-bola",
+            "startMatch" to "Começar partida",
+            "learnToPlay" to "📖 Aprenda a jogar",
+            "rulesTitle" to "Como jogar Bugz",
+            "rulesGoal" to "🎯 Objetivo: cerque a abelha rainha do oponente com peças em todos os seis " +
+                "lados. Quem conseguir primeiro vence; se ambas forem cercadas ao mesmo tempo, empata.",
+            "rulesCoreTitle" to "📜 Regras básicas",
+            "rulesCoreBody" to "• Jogue uma peça por turno ou mova uma de suas peças.\n" +
+                "• Sua abelha rainha deve ser introduzida até o seu 4º turno.\n" +
+                "• Sua primeira peça pode ser colocada em qualquer lugar; as seguintes devem ficar " +
+                "adjacentes a uma de suas peças. Exceto a segunda colocação, as peças não podem tocar " +
+                "peças do oponente.\n" +
+                "• O enxame deve permanecer sempre conectado. Nunca mova uma peça que dividiria o " +
+                "enxame, nem mova para um vão sem respeitar a regra de liberdade de movimento (sem " +
+                "apertar entre peças empilhadas).",
+            "rulesInsectsTitle" to "🦗 Movimentos dos insetos",
+            "insectQueen" to "🐝 Abelha rainha — move exatamente 1 hexágono por turno.",
+            "insectSpider" to "🕷️ Aranha — rasteja exatamente 3 hexágonos pela borda externa, sem retroceder.",
+            "insectBeetle" to "🪲 Besouro — move 1 hexágono e pode subir sobre outras peças (inclusive " +
+                "a rainha) para bloqueá-las; um besouro no topo move-se como besouro sobre a pilha.",
+            "insectGrasshopper" to "🦗 Gafanhoto — salta em linha reta sobre pelo menos uma peça, pousando " +
+                "no primeiro hexágono vazio da linha.",
+            "insectAnt" to "🐜 Formiga soldado — pode deslizar qualquer número de hexágonos pela parte externa do enxame.",
+            "insectMosquito" to "🦟 Pernilongo — copia o movimento (ou a habilidade do bicho-bola) de qualquer peça que toque.",
+            "insectLadybug" to "🐞 Joaninha — move exatamente 2 hexágonos sobre o enxame e depois 1 de " +
+                "volta ao tabuleiro (pode pousar em hexágonos vazios).",
+            "insectPillbug" to "🪳 Bicho-bola — não pode se mover, mas pode mover uma peça adjacente " +
+                "(aliada ou inimiga) 2 hexágonos: primeiro sobre si mesma e depois para um espaço vazio " +
+                "adjacente. A peça movida fica atordoada e não pode se mover no próximo turno do oponente.",
+            "overDrawTitle" to "Empate!",
+            "overWinTitle" to "Jogador {n} venceu!",
+            "overDrawBody" to "As duas rainhas estão cercadas. Empate!",
+            "overWinBody" to "A rainha do Jogador {n} está cercada. Bem jogado!",
+            "rematch" to "Revanche",
+            "newSetup" to "Nova configuração",
+            "resumeTitle" to "Continuar sua última partida?",
+            "resumeBody" to "Você tem uma partida salva em andamento.",
+            "resumeBtn" to "Continuar",
+            "newGameBtn" to "Nova partida",
+            "placedLog" to "Colocou {bug} em ({q}, {r})",
+            "movedLog" to "Moveu {bug} de ({q1}, {r1}) para ({q2}, {r2})",
+            "pillbugLog" to "A bicho-bola moveu {bug} de ({q1}, {r1}) para ({q2}, {r2})",
+            "gotIt" to "Entendi",
+
+        ),
+        Lang.FR to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "Fin de partie",
+            "topAiThinking" to "L’IA réfléchit…",
+            "topVsAi" to "VS IA ({diff})",
+            "topPassPlay" to "Passe et joue",
+            "winnerLabel" to "Gagnant : {color}",
+            "turnLabel" to "Tour : P{player}",
+            "white" to "Blanc",
+            "black" to "Noir",
+            "draw" to "Égalité",
+            "settings" to "Réglages",
+            "passLog" to "Le Joueur {n} a été forcé de passer (aucun coup légal).",
+            "aiPassLog" to "L’IA (Joueur {n}) a été forcée de passer.",
+            "aiNoMovesToast" to "L’IA n’a aucun coup valide. Tour passé.",
+            "undoToast" to "Coup annulé.",
+            "queenDueToast" to "Vous DEVEZ placer votre reine ce tour-ci (règle du 4e tour).",
+            "moveLog" to "Historique des coups",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 Nouvelle partie de Bugz",
+            "selectMode" to "Choisissez le mode de jeu :",
+            "modePassPlay" to "Passe et joue",
+            "modeVsAi" to "VS Moteur IA",
+            "aiDifficulty" to "Difficulté de l’IA :",
+            "diffEasy" to "Facile",
+            "diffMedium" to "Moyen",
+            "diffHard" to "Difficile",
+            "youPlayAs" to "Vous jouez :",
+            "whiteP1" to "Blanc (P1)",
+            "blackP2" to "Noir (P2)",
+            "expansions" to "Extensions :",
+            "expMosquito" to "🦟 Moustique",
+            "expLadybug" to "🐞 Coccinelle",
+            "expPillbug" to "💊 Cloporte",
+            "startMatch" to "Commencer la partie",
+            "learnToPlay" to "📖 Apprendre à jouer",
+            "rulesTitle" to "Comment jouer à Bugz",
+            "rulesGoal" to "🎯 Objectif : encerclez la reine adverse avec des pièces sur les six " +
+                "côtés. Le premier à y parvenir gagne ; si les deux sont encerclées à la fois, c’est " +
+                "une égalité.",
+            "rulesCoreTitle" to "📜 Règles de base",
+            "rulesCoreBody" to "• Jouez une pièce par tour (placement) ou déplacez une de vos pièces.\n" +
+                "• Votre reine doit être introduite avant votre 4e tour.\n" +
+                "• Votre première pièce est placée n’importe où ; les suivantes doivent être " +
+                "adjacentes à une de vos pièces. Sauf pour la deuxième pose, vous ne pouvez pas poser " +
+                "une pièce touchant une pièce adverse.\n" +
+                "• L’essaim doit toujours rester connecté. Vous ne pouvez jamais déplacer une pièce " +
+                "qui diviserait l’essaim, ni la glisser dans un espace étroit (pas de glissement entre " +
+                "pièces empilées).",
+            "rulesInsectsTitle" to "🦗 Déplacements des insectes",
+            "insectQueen" to "🐝 Reine — se déplace d’exactement 1 hexagone par tour.",
+            "insectSpider" to "🕷️ Araignée — se déplace d’exactement 3 hexagones le long du bord, sans jamais revenir en arrière.",
+            "insectBeetle" to "🪲 Scarabée — se déplace d’1 hexagone et peut grimper sur d’autres pièces " +
+                "(y compris la reine) pour les bloquer ; un scarabée en haut se déplace par-dessus la pile.",
+            "insectGrasshopper" to "🦗 Sauterelle — saute en ligne droite par-dessus au moins une pièce " +
+                "et atterrit sur le premier hexagone vide de la ligne.",
+            "insectAnt" to "🐜 Fourmi soldat — peut glisser d’un nombre quelconque d’hexagones le long de l’extérieur de l’essaim.",
+            "insectMosquito" to "🦟 Moustique — copie le déplacement (ou l’aptitude du cloporte) de toute pièce qu’il touche.",
+            "insectLadybug" to "🐞 Coccinelle — se déplace d’exactement 2 hexagones par-dessus l’essaim, " +
+                "puis redescend d’1 hexagone sur le plateau (peut atterrir sur des cases vides).",
+            "insectPillbug" to "🪳 Cloporte — ne peut pas se déplacer, mais peut déplacer une pièce " +
+                "adjacente (alliée ou ennemie) de 2 hexagones : d’abord sur lui-même, puis dans un " +
+                "espace vide adjacent. La pièce déplacée est étourdie et ne peut pas bouger au tour " +
+                "suivant de l’adversaire.",
+            "overDrawTitle" to "Égalité !",
+            "overWinTitle" to "Le Joueur {n} gagne !",
+            "overDrawBody" to "Les deux reines sont encerclées. Égalité !",
+            "overWinBody" to "La reine du Joueur {n} est encerclée. Bien joué !",
+            "rematch" to "Revanche",
+            "newSetup" to "Nouvelle configuration",
+            "resumeTitle" to "Reprendre votre dernière partie ?",
+            "resumeBody" to "Vous avez une partie sauvegardée en cours.",
+            "resumeBtn" to "Reprendre",
+            "newGameBtn" to "Nouvelle partie",
+            "placedLog" to "A placé {bug} en ({q}, {r})",
+            "movedLog" to "A déplacé {bug} de ({q1}, {r1}) vers ({q2}, {r2})",
+            "pillbugLog" to "Le cloporte a déplacé {bug} de ({q1}, {r1}) vers ({q2}, {r2})",
+            "gotIt" to "Compris",
+
+        ),
+        Lang.DE to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "Spiel vorbei",
+            "topAiThinking" to "KI denkt…",
+            "topVsAi" to "Gegen KI ({diff})",
+            "topPassPlay" to "Weitersagen & Spielen",
+            "winnerLabel" to "Gewinner: {color}",
+            "turnLabel" to "Zug: P{player}",
+            "white" to "Weiß",
+            "black" to "Schwarz",
+            "draw" to "Unentschieden",
+            "settings" to "Einstellungen",
+            "passLog" to "Spieler {n} musste aussetzen (keine legalen Züge).",
+            "aiPassLog" to "Die KI (Spieler {n}) musste aussetzen.",
+            "aiNoMovesToast" to "Die KI hat keine gültigen Züge. Zug übersprungen.",
+            "undoToast" to "Zug rückgängig gemacht.",
+            "queenDueToast" to "Du MUSST diesen Zug deine Bienenkönigin platzieren (4.-Zug-Regel).",
+            "moveLog" to "Zugverlauf",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 Neues Bugz-Spiel",
+            "selectMode" to "Spielmodus wählen:",
+            "modePassPlay" to "Weitersagen & Spielen",
+            "modeVsAi" to "Gegen KI-Engine",
+            "aiDifficulty" to "KI-Schwierigkeit:",
+            "diffEasy" to "Leicht",
+            "diffMedium" to "Mittel",
+            "diffHard" to "Schwer",
+            "youPlayAs" to "Du spielst als:",
+            "whiteP1" to "Weiß (P1)",
+            "blackP2" to "Schwarz (P2)",
+            "expansions" to "Erweiterungen:",
+            "expMosquito" to "🦟 Mücke",
+            "expLadybug" to "🐞 Marienkäfer",
+            "expPillbug" to "💊 Assel",
+            "startMatch" to "Start",
+            "learnToPlay" to "📖 Lernen zu spielen",
+            "rulesTitle" to "So spielst du Bugz",
+            "rulesGoal" to "🎯 Ziel: Umfasse die Bienenkönigin des Gegners auf allen sechs Seiten. " +
+                "Wer das zuerst schafft, gewinnt; sind beide gleichzeitig eingekreist, ist es ein " +
+                "Unentschieden.",
+            "rulesCoreTitle" to "📜 Grundregeln",
+            "rulesCoreBody" to "• Setze pro Zug eine Kachel (Platzierung) oder bewege eine deiner Kacheln.\n" +
+                "• Deine Bienenkönigin muss bis zu deinem 4. Zug eingeführt werden.\n" +
+                "• Deine erste Kachel platzierst du überall; spätere müssen an eine deiner Kacheln " +
+                "angrenzen. Außer bei deiner zweiten Platzierung dürfen Kacheln nicht gegnerische " +
+                "Kacheln berühren.\n" +
+                "• Der Schwarm muss immer verbunden bleiben. Du darfst nie eine Kachel ziehen, die den " +
+                "Schwarm spaltet, und nicht in eine Lücke ziehen, es sei denn, es gilt die " +
+                "Bewegungsfreiheitsregel (kein Durchquetschen zwischen gestapelten Kacheln).",
+            "rulesInsectsTitle" to "🦗 Bewegungen der Insekten",
+            "insectQueen" to "🐝 Bienenkönigin — zieht genau 1 Feld pro Zug.",
+            "insectSpider" to "🕷️ Spinne — kriecht genau 3 Felder entlang der Außenkante, nie rückwärts.",
+            "insectBeetle" to "🪲 Käfer — zieht 1 Feld und kann auf andere Kacheln (auch die Königin) " +
+                "klettern, um sie zu blockieren; ein Käfer oben zieht über den Stapel.",
+            "insectGrasshopper" to "🦗 Heuschrecke — springt in einer geraden Linie über mindestens eine " +
+                "Kachel und landet auf dem ersten leeren Feld dieser Linie.",
+            "insectAnt" to "🐜 Soldatenameise — kann beliebig viele Felder entlang der Außenseite des Schwarms gleiten.",
+            "insectMosquito" to "🦟 Mücke — kopiert die Bewegung (oder Assel-Fähigkeit) jeder Kachel, die sie berührt.",
+            "insectLadybug" to "🐞 Marienkäfer — zieht genau 2 Felder über dem Schwarm und dann 1 Feld " +
+                "zurück auf das Brett (darf auf leere Felder landen).",
+            "insectPillbug" to "🪳 Assel — kann sich selbst nicht bewegen, aber eine benachbarte Kachel " +
+                "(feindlich oder freundlich) 2 Felder bewegen: erst auf sich, dann in einen benachbarten " +
+                "leeren Raum. Die bewegte Kachel ist benommen und kann im nächsten Zug des Gegners nicht ziehen.",
+            "overDrawTitle" to "Unentschieden!",
+            "overWinTitle" to "Spieler {n} gewinnt!",
+            "overDrawBody" to "Beide Königinnen sind eingekreist. Unentschieden!",
+            "overWinBody" to "Die Königin von Spieler {n} ist eingekreist. Gut gespielt!",
+            "rematch" to "Revanche",
+            "newSetup" to "Neue Konfiguration",
+            "resumeTitle" to "Letzte Partie fortsetzen?",
+            "resumeBody" to "Du hast ein gespeichertes Spiel in Arbeit.",
+            "resumeBtn" to "Fortsetzen",
+            "newGameBtn" to "Neues Spiel",
+            "placedLog" to "{bug} bei ({q}, {r}) platziert",
+            "movedLog" to "{bug} von ({q1}, {r1}) nach ({q2}, {r2}) bewegt",
+            "pillbugLog" to "Assel bewegt {bug} von ({q1}, {r1}) nach ({q2}, {r2})",
+            "gotIt" to "Verstanden",
+
+        ),
+        Lang.JA to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "ゲーム終了",
+            "topAiThinking" to "AI思考中…",
+            "topVsAi" to "AIと対戦 ({diff})",
+            "topPassPlay" to "パス&プレイ",
+            "winnerLabel" to "勝者: {color}",
+            "turnLabel" to "手番: P{player}",
+            "white" to "白",
+            "black" to "黒",
+            "draw" to "引き分け",
+            "settings" to "設定",
+            "passLog" to "プレイヤー{n}は合法手がなくパスしました。",
+            "aiPassLog" to "AI（プレイヤー{n}）はパスを余儀なくされました。",
+            "aiNoMovesToast" to "AIに有効な手がありません。パスしました。",
+            "undoToast" to "手を戻しました。",
+            "queenDueToast" to "このターンは女王バチを配置しなければなりません（4手目ルール）。",
+            "moveLog" to "手番履歴",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 新しいBugzゲーム",
+            "selectMode" to "ゲームモードを選択:",
+            "modePassPlay" to "パス&プレイ",
+            "modeVsAi" to "AIエンジンと対戦",
+            "aiDifficulty" to "AIの難易度:",
+            "diffEasy" to "かんたん",
+            "diffMedium" to "ふつう",
+            "diffHard" to "むずかしい",
+            "youPlayAs" to "あなたは:",
+            "whiteP1" to "白（P1）",
+            "blackP2" to "黒（P2）",
+            "expansions" to "拡張:",
+            "expMosquito" to "🦟 蚊",
+            "expLadybug" to "🐞 テントウムシ",
+            "expPillbug" to "💊 ダンゴムシ",
+            "startMatch" to "開始",
+            "learnToPlay" to "📖 遊び方を学ぶ",
+            "rulesTitle" to "Bugzの遊び方",
+            "rulesGoal" to "🎯 目的: 相手の女王バチの6方向すべてを自分の駒で囲みましょう。先に囲んだ方が " +
+                "勝ち。同時なら引き分けです。",
+            "rulesCoreTitle" to "📜 基本ルール",
+            "rulesCoreBody" to "• 毎ターン1枚配置するか、自分の駒を1つ動かします。\n" +
+                "• 女王バチは4手目までに配置しなければなりません。\n" +
+                "• 最初の1枚はどこにでも置けます。以降は自分の駒に隣接して置きます。2枚目の配置 " +
+                "以外は、相手の駒に接する配置はできません。\n" +
+                "• ハイブは常に繋がっていなければなりません。盤面を分断する動きはできず、積み上げた " +
+                "駒の隙間に入り込む動きも禁止です。",
+            "rulesInsectsTitle" to "🦗 昆虫の動き",
+            "insectQueen" to "🐝 女王バチ — 毎ターンちょうど1マス移動します。",
+            "insectSpider" to "🕷️ クモ — 外周に沿ってちょうど3マス移動し、後戻りはできません。",
+            "insectBeetle" to "🪲 カブトムシ — 1マス移動し、他の駒（女王バチを含む）の上に登って封鎖できます。上に乗ったカブトムシはスタックの上を移動します。",
+            "insectGrasshopper" to "🦗 バッタ — 一直線に少なくとも1つの駒を飛び越え、その線上で最初の空きマスに着地します。",
+            "insectAnt" to "🐜 兵隊アリ — ハイブの外周に沿って好きなだけ滑るように移動できます。",
+            "insectMosquito" to "🦟 蚊 — 接触している駒の移動（またはダンゴムシの能力）をコピーします。",
+            "insectLadybug" to "🐞 テントウムシ — ハイブの上をちょうど2マス移動し、その後1マス盤面に降ります（空きマスに着地可）。",
+            "insectPillbug" to "🪳 ダンゴムシ — 自分は動けませんが、隣接する駒（敵味方どちらでも）を2マス動かせます: まず自分の上へ、そして隣接する空きマスへ。動かされた駒はスタンし、相手の次のターンは動けません。",
+            "overDrawTitle" to "引き分け！",
+            "overWinTitle" to "プレイヤー{n}の勝利！",
+            "overDrawBody" to "両方の女王が囲まれました。引き分け！",
+            "overWinBody" to "プレイヤー{n}の女王が囲まれました。お見事！",
+            "rematch" to "再戦",
+            "newSetup" to "新しい設定",
+            "resumeTitle" to "前回の対戦を続けますか？",
+            "resumeBody" to "進行中の保存データがあります。",
+            "resumeBtn" to "続ける",
+            "newGameBtn" to "新しいゲーム",
+            "placedLog" to "{bug} を ({q}, {r}) に配置",
+            "movedLog" to "{bug} を ({q1}, {r1}) から ({q2}, {r2}) へ移動",
+            "pillbugLog" to "ダンゴムシが {bug} を ({q1}, {r1}) から ({q2}, {r2}) へ移動",
+            "gotIt" to "OK",
+
+        ),
+        Lang.ZH to mapOf(
+            "appTitle" to "🐝 Bugz Strategy",
+            "topGameOver" to "游戏结束",
+            "topAiThinking" to "AI思考中…",
+            "topVsAi" to "对战AI（{diff}）",
+            "topPassPlay" to "轮流游玩",
+            "winnerLabel" to "获胜者：{color}",
+            "turnLabel" to "回合：P{player}",
+            "white" to "白",
+            "black" to "黑",
+            "draw" to "平局",
+            "settings" to "设置",
+            "passLog" to "玩家{n}没有合法走法，被迫跳过回合。",
+            "aiPassLog" to "AI（玩家{n}）被迫跳过回合。",
+            "aiNoMovesToast" to "AI没有有效走法。跳过回合。",
+            "undoToast" to "已撤销一步。",
+            "queenDueToast" to "本回合必须放置蜂后（第4回合规则）。",
+            "moveLog" to "走法记录",
+            "pLabel" to "P{player}",
+            "setupTitle" to "🐝 新的Bugz对局",
+            "selectMode" to "选择游戏模式：",
+            "modePassPlay" to "轮流游玩",
+            "modeVsAi" to "对战AI引擎",
+            "aiDifficulty" to "AI难度：",
+            "diffEasy" to "简单",
+            "diffMedium" to "中等",
+            "diffHard" to "困难",
+            "youPlayAs" to "你执：",
+            "whiteP1" to "白（P1）",
+            "blackP2" to "黑（P2）",
+            "expansions" to "扩展：",
+            "expMosquito" to "🦟 蚊子",
+            "expLadybug" to "🐞 瓢虫",
+            "expPillbug" to "💊 潮虫",
+            "startMatch" to "开始对局",
+            "learnToPlay" to "📖 学习玩法",
+            "rulesTitle" to "如何玩Bugz",
+            "rulesGoal" to "🎯 目标：用棋子将对手的蜂后六面围住。先完成者获胜；同时围住则为平局。",
+            "rulesCoreTitle" to "📜 基本规则",
+            "rulesCoreBody" to "• 每回合放置一枚棋子，或移动自己的一枚棋子。\n" +
+                "• 蜂后必须在你的第4回合之前上场。\n" +
+                "• 第一枚棋子可放在任意位置；之后的棋子必须与自己的棋子相邻。除第二次放置外，棋子 " +
+                "不能与对手棋子接触。\n" +
+                "• 蜂群必须始终保持连通。不得移动会分裂蜂群的棋子，也不得将棋子挤入过窄的缝隙。",
+            "rulesInsectsTitle" to "🦗 昆虫的走法",
+            "insectQueen" to "🐝 蜂后 — 每回合恰好移动1格。",
+            "insectSpider" to "🕷️ 蜘蛛 — 沿外围恰好爬行3格，不得折返。",
+            "insectBeetle" to "🪲 甲虫 — 移动1格，可爬上其他棋子（包括蜂后）将其封锁；上方的甲虫可沿堆叠移动。",
+            "insectGrasshopper" to "🦗 蚂蚱 — 沿直线跳过至少一枚棋子，落在该线路上第一个空格。",
+            "insectAnt" to "🐜 兵蚁 — 可沿蜂群外部滑动任意数量的格子。",
+            "insectMosquito" to "🦟 蚊子 — 复制与之接触的任何棋子的走法（或潮虫能力）。",
+            "insectLadybug" to "🐞 瓢虫 — 在蜂群上方恰好移动2格，然后向下1格落回棋盘（可落在空棋盘格上）。",
+            "insectPillbug" to "🪳 潮虫 — 自身不能移动，但可将相邻的棋子（敌我均可）移动2格：先移到自身上方，再移到相邻空格。被移动的棋子陷入眩晕，对手下一回合不能移动。",
+            "overDrawTitle" to "平局！",
+            "overWinTitle" to "玩家{n}获胜！",
+            "overDrawBody" to "双方蜂后都被围住。平局！",
+            "overWinBody" to "玩家{n}的蜂后被围住了。打得漂亮！",
+            "rematch" to "再战",
+            "newSetup" to "新设置",
+            "resumeTitle" to "继续上一局？",
+            "resumeBody" to "你有一场已保存的进行中对局。",
+            "resumeBtn" to "继续",
+            "newGameBtn" to "新游戏",
+            "placedLog" to "将{bug}放置在({q}, {r})",
+            "movedLog" to "将{bug}从({q1}, {r1})移动到({q2}, {r2})",
+            "pillbugLog" to "潮虫将{bug}从({q1}, {r1})移动到({q2}, {r2})",
+            "gotIt" to "知道了",
+
+        ),
+    )
+
+    @Volatile
+    var lang: Lang = Lang.EN
+
+    fun tr(key: String): String {
+        val table = strings[lang] ?: strings.getValue(Lang.EN)
+        return table[key] ?: strings.getValue(Lang.EN)[key] ?: key
+    }
+
+    fun tr(key: String, vararg args: Pair<String, Any>): String {
+        var text = tr(key)
+        for ((k, v) in args) {
+            text = text.replace("{$k}", v.toString())
+        }
+        return text
+    }
+}
 
 // ============================================================================
 // 1. DATA MODELS & DEFINITIONS
@@ -82,7 +654,7 @@ enum class BugType(
     val title: String,
     val emoji: String,
     val defaultCount: Int,
-    val isExpansion: Boolean = false
+    val isExpansion: Boolean = false,
 ) {
     QUEEN("Queen Bee", "🐝", 1),
     SPIDER("Spider", "🕷️", 2),
@@ -91,7 +663,7 @@ enum class BugType(
     SOLDIER_ANT("Soldier Ant", "🐜", 3),
     MOSQUITO("Mosquito", "🦟", 1, true),
     LADYBUG("Ladybug", "🐞", 1, true),
-    PILLBUG("Pillbug", "🪳", 1, true)
+    PILLBUG("Pillbug", "🪳", 1, true),
 }
 
 data class Piece(val id: String, val type: BugType, val player: Player)
@@ -99,8 +671,12 @@ data class Piece(val id: String, val type: BugType, val player: Player)
 data class AxialHex(val q: Int, val r: Int) {
     fun key() = "$q,$r"
     fun getNeighbors(): List<AxialHex> = listOf(
-        AxialHex(q + 1, r), AxialHex(q + 1, r - 1), AxialHex(q, r - 1),
-        AxialHex(q - 1, r), AxialHex(q - 1, r + 1), AxialHex(q, r + 1)
+        AxialHex(q + 1, r),
+        AxialHex(q + 1, r - 1),
+        AxialHex(q, r - 1),
+        AxialHex(q - 1, r),
+        AxialHex(q - 1, r + 1),
+        AxialHex(q, r + 1),
     )
 }
 
@@ -110,14 +686,14 @@ enum class AIDifficulty { EASY, MEDIUM, HARD }
 data class ExpansionsConfig(
     val mosquito: Boolean = true,
     val ladybug: Boolean = true,
-    val pillbug: Boolean = true
+    val pillbug: Boolean = true,
 )
 
 data class GameSettings(
     val mode: GameMode = GameMode.AI,
     val aiDifficulty: AIDifficulty = AIDifficulty.MEDIUM,
     val expansions: ExpansionsConfig = ExpansionsConfig(),
-    val humanColor: Player = Player.ONE
+    val humanColor: Player = Player.ONE,
 )
 
 data class MoveLogEntry(val turn: Int, val player: Player, val text: String)
@@ -129,7 +705,7 @@ data class MoveAction(
     val player: Player,
     val fromHex: AxialHex? = null,
     val toHex: AxialHex,
-    val pillbugTargetHex: AxialHex? = null
+    val pillbugTargetHex: AxialHex? = null,
 ) {
     enum class ActionType { PLACE, MOVE, PILLBUG_SPECIAL }
 }
@@ -137,7 +713,7 @@ data class MoveAction(
 data class PillbugTargetOption(
     val targetHex: AxialHex,
     val piece: Piece,
-    val destinationHexes: List<AxialHex>
+    val destinationHexes: List<AxialHex>,
 )
 
 data class GameStatus(
@@ -145,11 +721,11 @@ data class GameStatus(
     val winner: Player?,
     val isDraw: Boolean,
     val p1QueenSurroundedCount: Int,
-    val p2QueenSurroundedCount: Int
+    val p2QueenSurroundedCount: Int,
 )
 
 // ============================================================================
-// 2. CORE GAME ENGINE & BUGZ RULES
+// 2. CORE GAME ENGINE & HIVE RULES
 // ============================================================================
 
 fun parseKey(key: String): AxialHex {
@@ -233,7 +809,7 @@ fun canSlide(
     board: Map<String, List<Piece>>,
     fromHex: AxialHex,
     toHex: AxialHex,
-    atHeight: Int = 0
+    atHeight: Int = 0,
 ): Boolean {
     val common = getCommonNeighbors(fromHex, toHex)
     if (common.size != 2) return false
@@ -252,7 +828,7 @@ fun canSlide(
 fun isValidGroundSlide(
     board: Map<String, List<Piece>>,
     fromHex: AxialHex,
-    toHex: AxialHex
+    toHex: AxialHex,
 ): Boolean {
     if (isOccupied(board, toHex)) return false
     if (!canSlide(board, fromHex, toHex, 0)) return false
@@ -260,8 +836,11 @@ fun isValidGroundSlide(
     val testBoard = cloneBoard(board)
     val stack = testBoard[fromHex.key()]
     if (stack != null) {
-        if (stack.size == 1) testBoard.remove(fromHex.key())
-        else stack.removeAt(stack.size - 1)
+        if (stack.size == 1) {
+            testBoard.remove(fromHex.key())
+        } else {
+            stack.removeAt(stack.size - 1)
+        }
     }
 
     val touchesSwarm = toHex.getNeighbors().any { isOccupied(testBoard, it) }
@@ -271,7 +850,7 @@ fun isValidGroundSlide(
 fun getValidPlacements(
     board: Map<String, List<Piece>>,
     player: Player,
-    turnCountP: Int
+    turnCountP: Int,
 ): List<AxialHex> {
     val occupied = getAllOccupiedHexes(board)
 
@@ -304,8 +883,11 @@ fun getValidPlacements(
         for (n in neighbors) {
             val topPiece = getTopPiece(board, n)
             if (topPiece != null) {
-                if (topPiece.player == player) touchesFriendly = true
-                else touchesEnemy = true
+                if (topPiece.player == player) {
+                    touchesFriendly = true
+                } else {
+                    touchesEnemy = true
+                }
             }
         }
 
@@ -320,7 +902,7 @@ fun getValidPlacements(
 fun getEffectiveBugTypes(
     board: Map<String, List<Piece>>,
     fromHex: AxialHex,
-    piece: Piece
+    piece: Piece,
 ): List<BugType> {
     if (piece.type != BugType.MOSQUITO) {
         return listOf(piece.type)
@@ -474,7 +1056,7 @@ fun getPillbugMoves(board: Map<String, List<Piece>>, fromHex: AxialHex): List<Ax
 fun getMovesForBugType(
     board: Map<String, List<Piece>>,
     fromHex: AxialHex,
-    bugType: BugType
+    bugType: BugType,
 ): List<AxialHex> {
     return when (bugType) {
         BugType.QUEEN -> getQueenMoves(board, fromHex)
@@ -494,7 +1076,7 @@ fun getValidMovesForPiece(
     player: Player,
     turnCountP: Int,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): List<AxialHex> {
     if (!isQueenPlaced(board, player)) {
         return emptyList()
@@ -524,7 +1106,7 @@ fun getPillbugSpecialTargets(
     board: Map<String, List<Piece>>,
     pillbugHex: AxialHex,
     player: Player,
-    lastMovedPieceId: String?
+    lastMovedPieceId: String?,
 ): List<PillbugTargetOption> {
     if (!isQueenPlaced(board, player)) return emptyList()
 
@@ -549,8 +1131,8 @@ fun getPillbugSpecialTargets(
                     PillbugTargetOption(
                         targetHex = adjHex,
                         piece = targetPiece,
-                        destinationHexes = emptyAdjacentHexes
-                    )
+                        destinationHexes = emptyAdjacentHexes,
+                    ),
                 )
             }
         }
@@ -565,7 +1147,7 @@ fun getPlayerAllLegalActions(
     reserve: List<Piece>,
     turnCountP: Int,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): List<MoveAction> {
     val actions = mutableListOf<MoveAction>()
     val queenPlaced = isQueenPlaced(board, player)
@@ -582,8 +1164,8 @@ fun getPlayerAllLegalActions(
                         pieceId = queenPiece.id,
                         bugType = BugType.QUEEN,
                         player = player,
-                        toHex = hex
-                    )
+                        toHex = hex,
+                    ),
                 )
             }
         }
@@ -608,8 +1190,8 @@ fun getPlayerAllLegalActions(
                         pieceId = piece.id,
                         bugType = bugType,
                         player = player,
-                        toHex = hex
-                    )
+                        toHex = hex,
+                    ),
                 )
             }
         }
@@ -622,7 +1204,12 @@ fun getPlayerAllLegalActions(
             val topPiece = getTopPiece(board, hex)
             if (topPiece != null && topPiece.player == player) {
                 val moves = getValidMovesForPiece(
-                    board, hex, player, turnCountP, lastMovedPieceId, expansions
+                    board,
+                    hex,
+                    player,
+                    turnCountP,
+                    lastMovedPieceId,
+                    expansions,
                 )
 
                 for (dest in moves) {
@@ -633,8 +1220,8 @@ fun getPlayerAllLegalActions(
                             bugType = topPiece.type,
                             player = player,
                             fromHex = hex,
-                            toHex = dest
-                        )
+                            toHex = dest,
+                        ),
                     )
                 }
 
@@ -651,8 +1238,8 @@ fun getPlayerAllLegalActions(
                                     player = player,
                                     fromHex = hex,
                                     pillbugTargetHex = opt.targetHex,
-                                    toHex = destHex
-                                )
+                                    toHex = destHex,
+                                ),
                             )
                         }
                     }
@@ -708,7 +1295,7 @@ class BugzEngine {
         val turnCountP1: Int,
         val turnCountP2: Int,
         val lastMovedPieceId: String?,
-        val history: List<MoveLogEntry>
+        val history: List<MoveLogEntry>,
     )
 
     fun snapshot(): EngineSnapshot {
@@ -720,7 +1307,7 @@ class BugzEngine {
             turnCountP1 = turnCountP1,
             turnCountP2 = turnCountP2,
             lastMovedPieceId = lastMovedPieceId,
-            history = history.toList()
+            history = history.toList(),
         )
     }
 
@@ -763,7 +1350,7 @@ class BugzEngine {
                     (bug == BugType.PILLBUG && expansions.pillbug)
                 ) {
                     repeat(bug.defaultCount) { idx ->
-                        list.add(Piece("p\${if (player == Player.ONE) 1 else 2}_\${bug.name}_$idx", bug, player))
+                        list.add(Piece("p${if (player == Player.ONE) 1 else 2}_${bug.name}_$idx", bug, player))
                     }
                 }
             }
@@ -784,7 +1371,12 @@ class BugzEngine {
 
     fun movesFor(hex: AxialHex): List<AxialHex> {
         return getValidMovesForPiece(
-            board, hex, currentPlayer, turnCountFor(currentPlayer), lastMovedPieceId, expansions
+            board,
+            hex,
+            currentPlayer,
+            turnCountFor(currentPlayer),
+            lastMovedPieceId,
+            expansions,
         )
     }
 
@@ -798,7 +1390,12 @@ class BugzEngine {
 
     fun legalActions(): List<MoveAction> {
         return getPlayerAllLegalActions(
-            board, currentPlayer, reserveFor(currentPlayer), turnCountFor(currentPlayer), lastMovedPieceId, expansions
+            board,
+            currentPlayer,
+            reserveFor(currentPlayer),
+            turnCountFor(currentPlayer),
+            lastMovedPieceId,
+            expansions,
         )
     }
 
@@ -823,7 +1420,12 @@ class BugzEngine {
             stack.add(newPiece)
             actuallyMovedId = newPiece.id
 
-            logDesc = "Placed \${action.bugType.title} at (\${action.toHex.q}, \${action.toHex.r})"
+            logDesc = I18n.tr(
+                "placedLog",
+                "bug" to action.bugType.title,
+                "q" to action.toHex.q,
+                "r" to action.toHex.r,
+            )
         } else if (action.type == MoveAction.ActionType.MOVE && action.fromHex != null) {
             val fromStack = board[action.fromHex.key()] ?: return
             val movedPiece = if (fromStack.isNotEmpty()) fromStack.removeAt(fromStack.size - 1) else null
@@ -836,7 +1438,14 @@ class BugzEngine {
                 actuallyMovedId = movedPiece.id
             }
 
-            logDesc = "Moved \${action.bugType.title} from (\${action.fromHex.q}, \${action.fromHex.r}) to (\${action.toHex.q}, \${action.toHex.r})"
+            logDesc = I18n.tr(
+                "movedLog",
+                "bug" to action.bugType.title,
+                "q1" to action.fromHex.q,
+                "r1" to action.fromHex.r,
+                "q2" to action.toHex.q,
+                "r2" to action.toHex.r,
+            )
         } else if (action.type == MoveAction.ActionType.PILLBUG_SPECIAL && action.pillbugTargetHex != null) {
             val targetStack = board[action.pillbugTargetHex.key()] ?: return
             val movedPiece = if (targetStack.isNotEmpty()) targetStack.removeAt(targetStack.size - 1) else null
@@ -849,7 +1458,14 @@ class BugzEngine {
                 actuallyMovedId = movedPiece.id
             }
 
-            logDesc = "Pillbug moved \${movedPiece?.type?.title ?: "piece"} to (\${action.toHex.q}, \${action.toHex.r})"
+            logDesc = I18n.tr(
+                "pillbugLog",
+                "bug" to (movedPiece?.type?.title ?: "piece"),
+                "q1" to action.pillbugTargetHex.q,
+                "r1" to action.pillbugTargetHex.r,
+                "q2" to action.toHex.q,
+                "r2" to action.toHex.r,
+            )
         }
 
         // The piece that actually moved/placed is "stunned" on the opponent's next turn.
@@ -859,8 +1475,8 @@ class BugzEngine {
             MoveLogEntry(
                 turn = if (action.player == Player.ONE) turnCountP1 else turnCountP2,
                 player = action.player,
-                text = logDesc
-            )
+                text = logDesc,
+            ),
         )
 
         if (action.player == Player.ONE) {
@@ -878,6 +1494,132 @@ class BugzEngine {
 }
 
 // ============================================================================
+// 2.5 SAVE / RESUME (SharedPreferences + org.json)
+// ============================================================================
+
+data class GameSave(
+    val settings: GameSettings,
+    val snapshot: BugzEngine.EngineSnapshot,
+)
+
+private const val SAVE_PREFS = "bugz_strategy_save"
+private const val SAVE_KEY = "game"
+
+private fun pieceToJson(p: Piece): JSONObject = JSONObject().apply {
+    put("id", p.id)
+    put("type", p.type.name)
+    put("player", p.player.name)
+}
+
+private fun pieceFromJson(o: JSONObject): Piece = Piece(
+    id = o.getString("id"),
+    type = BugType.valueOf(o.getString("type")),
+    player = Player.valueOf(o.getString("player")),
+)
+
+private fun logToJson(e: MoveLogEntry): JSONObject = JSONObject().apply {
+    put("turn", e.turn)
+    put("player", e.player.name)
+    put("text", e.text)
+}
+
+private fun logFromJson(o: JSONObject): MoveLogEntry = MoveLogEntry(
+    turn = o.getInt("turn"),
+    player = Player.valueOf(o.getString("player")),
+    text = o.getString("text"),
+)
+
+private fun snapshotToJson(s: BugzEngine.EngineSnapshot): JSONObject = JSONObject().apply {
+    val boardJson = JSONObject()
+    s.board.forEach { (key, stack) ->
+        val arr = JSONArray()
+        stack.forEach { arr.put(pieceToJson(it)) }
+        boardJson.put(key, arr)
+    }
+    put("board", boardJson)
+    put("p1Reserve", JSONArray().apply { s.p1Reserve.forEach { put(pieceToJson(it)) } })
+    put("p2Reserve", JSONArray().apply { s.p2Reserve.forEach { put(pieceToJson(it)) } })
+    put("currentPlayer", s.currentPlayer.name)
+    put("turnCountP1", s.turnCountP1)
+    put("turnCountP2", s.turnCountP2)
+    put("lastMovedPieceId", s.lastMovedPieceId ?: JSONObject.NULL)
+    put("history", JSONArray().apply { s.history.forEach { put(logToJson(it)) } })
+}
+
+private fun snapshotFromJson(o: JSONObject): BugzEngine.EngineSnapshot {
+    val boardJson = o.getJSONObject("board")
+    val board = mutableMapOf<String, List<Piece>>()
+    boardJson.keys().forEach { key ->
+        val arr = boardJson.getJSONArray(key)
+        board[key] = (0 until arr.length()).map { pieceFromJson(arr.getJSONObject(it)) }
+    }
+    val p1 = o.getJSONArray("p1Reserve")
+    val p2 = o.getJSONArray("p2Reserve")
+    val hist = o.getJSONArray("history")
+    return BugzEngine.EngineSnapshot(
+        board = board,
+        p1Reserve = (0 until p1.length()).map { pieceFromJson(p1.getJSONObject(it)) },
+        p2Reserve = (0 until p2.length()).map { pieceFromJson(p2.getJSONObject(it)) },
+        currentPlayer = Player.valueOf(o.getString("currentPlayer")),
+        turnCountP1 = o.getInt("turnCountP1"),
+        turnCountP2 = o.getInt("turnCountP2"),
+        lastMovedPieceId = if (o.isNull("lastMovedPieceId")) null else o.getString("lastMovedPieceId"),
+        history = (0 until hist.length()).map { logFromJson(hist.getJSONObject(it)) },
+    )
+}
+
+private fun settingsToJson(s: GameSettings): JSONObject = JSONObject().apply {
+    put("mode", s.mode.name)
+    put("aiDifficulty", s.aiDifficulty.name)
+    put("humanColor", s.humanColor.name)
+    put("expMosquito", s.expansions.mosquito)
+    put("expLadybug", s.expansions.ladybug)
+    put("expPillbug", s.expansions.pillbug)
+}
+
+private fun settingsFromJson(o: JSONObject): GameSettings = GameSettings(
+    mode = GameMode.valueOf(o.getString("mode")),
+    aiDifficulty = AIDifficulty.valueOf(o.getString("aiDifficulty")),
+    humanColor = Player.valueOf(o.getString("humanColor")),
+    expansions = ExpansionsConfig(
+        mosquito = o.getBoolean("expMosquito"),
+        ladybug = o.getBoolean("expLadybug"),
+        pillbug = o.getBoolean("expPillbug"),
+    ),
+)
+
+fun saveGame(context: Context, settings: GameSettings, engine: BugzEngine) {
+    val json = JSONObject().apply {
+        put("settings", settingsToJson(settings))
+        put("snapshot", snapshotToJson(engine.snapshot()))
+        put("savedAt", System.currentTimeMillis())
+    }
+    runCatching {
+        context.getSharedPreferences(SAVE_PREFS, Context.MODE_PRIVATE)
+            .edit().putString(SAVE_KEY, json.toString()).apply()
+    }
+}
+
+fun loadGame(context: Context): GameSave? {
+    val raw = runCatching {
+        context.getSharedPreferences(SAVE_PREFS, Context.MODE_PRIVATE).getString(SAVE_KEY, null)
+    }.getOrNull() ?: return null
+    return runCatching {
+        val json = JSONObject(raw)
+        GameSave(
+            settings = settingsFromJson(json.getJSONObject("settings")),
+            snapshot = snapshotFromJson(json.getJSONObject("snapshot")),
+        )
+    }.getOrNull()
+}
+
+fun clearSave(context: Context) {
+    runCatching {
+        context.getSharedPreferences(SAVE_PREFS, Context.MODE_PRIVATE).edit().remove(SAVE_KEY).apply()
+    }
+}
+
+// ============================================================================
 // 3. AI ENGINE (Easy / Medium / Hard)
 // ============================================================================
 
@@ -890,10 +1632,15 @@ fun computeAIMove(
     turnCountHuman: Int,
     difficulty: AIDifficulty,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): MoveAction? {
     val legalActions = getPlayerAllLegalActions(
-        board, aiPlayer, aiReserve, turnCountAI, lastMovedPieceId, expansions
+        board,
+        aiPlayer,
+        aiReserve,
+        turnCountAI,
+        lastMovedPieceId,
+        expansions,
     )
 
     if (legalActions.isEmpty()) return null
@@ -902,11 +1649,11 @@ fun computeAIMove(
         AIDifficulty.EASY -> computeEasyMove(board, aiPlayer, legalActions, turnCountAI)
         AIDifficulty.MEDIUM -> computeMediumMove(
             board, aiPlayer, aiReserve, humanReserve, turnCountAI, turnCountHuman,
-            legalActions, lastMovedPieceId, expansions
+            legalActions, lastMovedPieceId, expansions,
         )
         AIDifficulty.HARD -> computeHardMinimaxMove(
             board, aiPlayer, aiReserve, humanReserve, turnCountAI, turnCountHuman,
-            legalActions, lastMovedPieceId, expansions
+            legalActions, lastMovedPieceId, expansions,
         )
     }
 }
@@ -915,7 +1662,7 @@ fun computeEasyMove(
     board: Map<String, List<Piece>>,
     aiPlayer: Player,
     legalActions: List<MoveAction>,
-    turnCountAI: Int
+    turnCountAI: Int,
 ): MoveAction {
     // Play the queen when it is due (by the 4th turn) if the AI forgot to place it earlier.
     if (!isQueenPlaced(board, aiPlayer) && turnCountAI >= 3) {
@@ -937,18 +1684,28 @@ fun computeMediumMove(
     turnCountHuman: Int,
     legalActions: List<MoveAction>,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): MoveAction {
     var bestScore = -1e9
     var bestActions = mutableListOf<MoveAction>()
 
     for (action in legalActions) {
         val (nextBoard, nextAIReserve, nextHumanReserve) = simulateAction(
-            board, action, aiPlayer, aiReserve, humanReserve
+            board,
+            action,
+            aiPlayer,
+            aiReserve,
+            humanReserve,
         )
 
         val score = evaluateBoard(
-            nextBoard, aiPlayer, nextAIReserve, nextHumanReserve, turnCountAI, turnCountHuman, expansions
+            nextBoard,
+            aiPlayer,
+            nextAIReserve,
+            nextHumanReserve,
+            turnCountAI,
+            turnCountHuman,
+            expansions,
         )
 
         if (score > bestScore + 1e-9) {
@@ -971,7 +1728,7 @@ fun computeHardMinimaxMove(
     turnCountHuman: Int,
     legalActions: List<MoveAction>,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): MoveAction {
     val depth = 2
     val humanPlayer: Player = if (aiPlayer == Player.ONE) Player.TWO else Player.ONE
@@ -983,7 +1740,11 @@ fun computeHardMinimaxMove(
 
     for (action in legalActions) {
         val (nextBoard, nextAIReserve, nextHumanReserve) = simulateAction(
-            board, action, aiPlayer, aiReserve, humanReserve
+            board,
+            action,
+            aiPlayer,
+            aiReserve,
+            humanReserve,
         )
 
         val status = checkGameStatus(nextBoard)
@@ -1004,7 +1765,7 @@ fun computeHardMinimaxMove(
             turnCountAI + 1,
             turnCountHuman,
             actuallyMovedPieceId(board, action),
-            expansions
+            expansions,
         )
 
         if (value > bestScore) {
@@ -1030,7 +1791,7 @@ fun minimax(
     turnAI: Int,
     turnHuman: Int,
     lastMovedPieceId: String?,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): Double {
     var alpha = alpha
     var beta = beta
@@ -1050,11 +1811,15 @@ fun minimax(
 
     val currentPlayer = if (isMaximizing) aiPlayer else humanPlayer
     val currentReserve = if (isMaximizing) aiReserve else humanReserve
-    val oppReserve = if (isMaximizing) humanReserve else aiReserve
     val turnCount = if (isMaximizing) turnAI else turnHuman
 
     val legalActions = getPlayerAllLegalActions(
-        board, currentPlayer, currentReserve, turnCount, lastMovedPieceId, expansions
+        board,
+        currentPlayer,
+        currentReserve,
+        turnCount,
+        lastMovedPieceId,
+        expansions,
     )
 
     if (legalActions.isEmpty()) {
@@ -1063,7 +1828,7 @@ fun minimax(
             aiPlayer, humanPlayer, aiReserve, humanReserve,
             if (isMaximizing) turnAI + 1 else turnAI,
             if (isMaximizing) turnHuman else turnHuman + 1,
-            lastMovedPieceId, expansions
+            lastMovedPieceId, expansions,
         )
     }
 
@@ -1071,13 +1836,17 @@ fun minimax(
         var maxEval = -1e9
         for (action in legalActions) {
             val (nextBoard, nextAIReserve, nextHumanReserve) = simulateAction(
-                board, action, aiPlayer, aiReserve, humanReserve
+                board,
+                action,
+                aiPlayer,
+                aiReserve,
+                humanReserve,
             )
 
             val evalValue = minimax(
                 nextBoard, depth - 1, alpha, beta, false,
                 aiPlayer, humanPlayer, nextAIReserve, nextHumanReserve,
-                turnAI + 1, turnHuman, actuallyMovedPieceId(board, action), expansions
+                turnAI + 1, turnHuman, actuallyMovedPieceId(board, action), expansions,
             )
 
             maxEval = maxOf(maxEval, evalValue)
@@ -1089,13 +1858,17 @@ fun minimax(
         var minEval = 1e9
         for (action in legalActions) {
             val (nextBoard, nextAIReserve, nextHumanReserve) = simulateAction(
-                board, action, humanPlayer, aiReserve, humanReserve
+                board,
+                action,
+                humanPlayer,
+                aiReserve,
+                humanReserve,
             )
 
             val evalValue = minimax(
                 nextBoard, depth - 1, alpha, beta, true,
                 aiPlayer, humanPlayer, nextAIReserve, nextHumanReserve,
-                turnAI, turnHuman + 1, actuallyMovedPieceId(board, action), expansions
+                turnAI, turnHuman + 1, actuallyMovedPieceId(board, action), expansions,
             )
 
             minEval = minOf(minEval, evalValue)
@@ -1113,7 +1886,7 @@ fun evaluateBoard(
     humanReserve: List<Piece>,
     turnAI: Int,
     turnHuman: Int,
-    expansions: ExpansionsConfig
+    expansions: ExpansionsConfig,
 ): Double {
     val humanPlayer: Player = if (aiPlayer == Player.ONE) Player.TWO else Player.ONE
 
@@ -1192,7 +1965,7 @@ fun simulateAction(
     action: MoveAction,
     actingPlayer: Player,
     aiReserve: List<Piece>,
-    humanReserve: List<Piece>
+    humanReserve: List<Piece>,
 ): Triple<MutableMap<String, MutableList<Piece>>, List<Piece>, List<Piece>> {
     val nextBoard = cloneBoard(board)
     var nextAIReserve = aiReserve.filter { it.id != action.pieceId }
@@ -1240,9 +2013,14 @@ fun simulateAction(
 @Composable
 fun BugzApp() {
     val engine = remember { BugzEngine() }
+    val context = LocalContext.current
 
     var gameState by remember { mutableStateOf(0) }
-    fun bump() { gameState++ }
+    fun bump() {
+        gameState++
+    }
+
+    var resumeSave by remember { mutableStateOf(loadGame(context)) }
 
     var settings by remember {
         mutableStateOf(GameSettings(GameMode.AI, AIDifficulty.MEDIUM, ExpansionsConfig(), Player.ONE))
@@ -1281,7 +2059,7 @@ fun BugzApp() {
             if (engine.board.isEmpty() && engine.p1Reserve.isEmpty() && engine.p2Reserve.isEmpty()) break
 
             val turn = engine.turnCountFor(cur)
-            engine.history.add(MoveLogEntry(turn, cur, "Player $cur forced to pass (no legal moves)."))
+            engine.history.add(MoveLogEntry(turn, cur, I18n.tr("passLog", "n" to if (cur == Player.ONE) 1 else 2)))
             engine.switchTurn()
             bump()
             guard++
@@ -1312,7 +2090,7 @@ fun BugzApp() {
                 engine.turnCountFor(humanPlayer),
                 settings.aiDifficulty,
                 engine.lastMovedPieceId,
-                settings.expansions
+                settings.expansions,
             )
 
             // Guard: game may have been restarted while the AI was thinking
@@ -1327,9 +2105,9 @@ fun BugzApp() {
             } else {
                 undoStack = undoStack + engine.snapshot()
                 val turn = engine.turnCountFor(engine.currentPlayer)
-                engine.history.add(MoveLogEntry(turn, engine.currentPlayer, "AI (Player \${if (engine.currentPlayer == Player.ONE) 1 else 2}) forced to pass."))
+                engine.history.add(MoveLogEntry(turn, engine.currentPlayer, I18n.tr("aiPassLog", "n" to if (engine.currentPlayer == Player.ONE) 1 else 2)))
                 engine.switchTurn()
-                toast = "AI has no valid moves. Turn passed."
+                toast = I18n.tr("aiNoMovesToast")
                 bump()
                 applyForcedPasses()
                 bump()
@@ -1375,6 +2153,24 @@ fun BugzApp() {
         toast = null
         isAITurn = false
         undoStack = emptyList()
+        resumeSave = null
+        isSetupOpen = false
+        bump()
+        requestAIMove()
+    }
+
+    fun resumeLastGame(save: GameSave) {
+        engine.restore(save.snapshot)
+        engine.expansions = save.settings.expansions
+        settings = save.settings
+        gameOver = null
+        isDraw = false
+        clearSelection()
+        lastMovedHex = null
+        toast = null
+        isAITurn = false
+        undoStack = emptyList()
+        resumeSave = null
         isSetupOpen = false
         bump()
         requestAIMove()
@@ -1400,7 +2196,7 @@ fun BugzApp() {
         gameOver = null
         isDraw = false
         isAITurn = false
-        toast = "Move undone."
+        toast = I18n.tr("undoToast")
         bump()
     }
 
@@ -1409,6 +2205,17 @@ fun BugzApp() {
         if (toast != null) {
             delay(2500)
             toast = null
+        }
+    }
+
+    // Auto-save after every move so a finished or interrupted game can be resumed
+    // when the player returns (the app may have been closed in the meantime).
+    LaunchedEffect(gameState, isSetupOpen, gameOver) {
+        if (gameOver != null) {
+            clearSave(context)
+            resumeSave = null
+        } else if (!isSetupOpen) {
+            saveGame(context, settings, engine)
         }
     }
 
@@ -1421,7 +2228,7 @@ fun BugzApp() {
         if (settings.mode == GameMode.AI && engine.currentPlayer == aiPlayer) return
 
         if (queenDue() && bug != BugType.QUEEN) {
-            toast = "Queen Bee must be placed this turn (4th move rule)."
+            toast = I18n.tr("queenDueToast")
             return
         }
 
@@ -1448,7 +2255,7 @@ fun BugzApp() {
         // Placement
         if (selectedReserveBug != null && isDest) {
             if (queenDue() && selectedReserveBug != BugType.QUEEN) {
-                toast = "Queen Bee must be placed this turn (4th move rule)."
+                toast = I18n.tr("queenDueToast")
                 return
             }
             val reserve = engine.reserveFor(engine.currentPlayer)
@@ -1459,8 +2266,8 @@ fun BugzApp() {
                     pieceId = piece.id,
                     bugType = piece.type,
                     player = engine.currentPlayer,
-                    toHex = hex
-                )
+                    toHex = hex,
+                ),
             )
             return
         }
@@ -1477,8 +2284,8 @@ fun BugzApp() {
                         player = engine.currentPlayer,
                         fromHex = selectedHex,
                         pillbugTargetHex = pillbugTargetHex,
-                        toHex = hex
-                    )
+                        toHex = hex,
+                    ),
                 )
             } else {
                 executeMove(
@@ -1488,8 +2295,8 @@ fun BugzApp() {
                         bugType = topPiece.type,
                         player = engine.currentPlayer,
                         fromHex = selectedHex,
-                        toHex = hex
-                    )
+                        toHex = hex,
+                    ),
                 )
             }
             return
@@ -1530,7 +2337,7 @@ fun BugzApp() {
     }
 
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors
+        colorScheme = if (isSystemInDarkTheme()) DarkColors else LightColors,
     ) {
         Scaffold(
             topBar = {
@@ -1538,72 +2345,93 @@ fun BugzApp() {
                     modifier = Modifier.height(74.dp),
                     title = {
                         Column(modifier = Modifier.padding(top = 14.dp)) {
-                            Text("🐝 Bugz Strategy", fontWeight = FontWeight.Black)
+                            Text(I18n.tr("appTitle"), fontWeight = FontWeight.Black)
                             Text(
                                 text = when {
-                                    gameOver != null -> "Game Over"
-                                    isAITurn -> "AI Thinking..."
-                                    settings.mode == GameMode.AI -> "VS AI (\${settings.aiDifficulty})"
-                                    else -> "Pass & Play"
+                                    gameOver != null -> I18n.tr("topGameOver")
+                                    isAITurn -> I18n.tr("topAiThinking")
+                                    settings.mode == GameMode.AI -> I18n.tr(
+                                        "topVsAi",
+                                        "diff" to when (settings.aiDifficulty) {
+                                            AIDifficulty.EASY -> I18n.tr("diffEasy")
+                                            AIDifficulty.MEDIUM -> I18n.tr("diffMedium")
+                                            AIDifficulty.HARD -> I18n.tr("diffHard")
+                                        },
+                                    )
+                                    else -> I18n.tr("topPassPlay")
                                 },
                                 fontSize = 15.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     },
                     actions = {
                         Text(
-                            text = if (gameOver != null)
-                                "Winner: \${if (gameOver == Player.ONE) "White" else if (gameOver == Player.TWO) "Black" else "Draw"}"
-                            else
-                                "Turn: P\${if (engine.currentPlayer == Player.ONE) 1 else 2} · T\${gameState}",
+                            text = if (gameOver != null) {
+                                I18n.tr(
+                                    "winnerLabel",
+                                    "color" to when {
+                                        gameOver == Player.ONE -> I18n.tr("white")
+                                        gameOver == Player.TWO -> I18n.tr("black")
+                                        else -> I18n.tr("draw")
+                                    },
+                                )
+                            } else {
+                                I18n.tr(
+                                    "turnLabel",
+                                    "player" to if (engine.currentPlayer == Player.ONE) 1 else 2,
+                                ) + " · T$gameState"
+                            },
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (engine.currentPlayer == Player.ONE)
+                            color = if (engine.currentPlayer == Player.ONE) {
                                 MaterialTheme.colorScheme.primary
-                            else
-                                if (isSystemInDarkTheme()) Color(0xFF93C5FD) else Color(0xFF1D4ED8),
-                            modifier = Modifier.align(Alignment.CenterVertically)
+                            } else {
+                                if (isSystemInDarkTheme()) Color(0xFF93C5FD) else Color(0xFF1D4ED8)
+                            },
+                            modifier = Modifier.align(Alignment.CenterVertically),
                         )
                         Spacer(Modifier.width(8.dp))
+                        LanguageSwitcher()
                         IconButton(
                             onClick = { handleUndo() },
-                            enabled = undoStack.isNotEmpty() && !isAITurn
+                            enabled = undoStack.isNotEmpty() && !isAITurn,
                         ) {
                             Text(
-                                text = "\\u21B6",
+                                text = "\u21B6",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (undoStack.isNotEmpty() && !isAITurn)
+                                color = if (undoStack.isNotEmpty() && !isAITurn) {
                                     MaterialTheme.colorScheme.primary
-                                else
+                                } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                             )
                         }
                         IconButton(onClick = { isSetupOpen = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Icon(Icons.Default.Settings, contentDescription = I18n.tr("settings"))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ),
                 )
-            }
+            },
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(MaterialTheme.colorScheme.background),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 ) {
                     // Main Interactive Hexagon Canvas (fills space above reserve bar)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .weight(1f),
                     ) {
                         HexCanvasBoard(
                             board = engine.board,
@@ -1612,7 +2440,7 @@ fun BugzApp() {
                             pillbugTargetHex = pillbugTargetHex,
                             pillbugDestinations = pillbugDestinations,
                             lastMovedHex = lastMovedHex,
-                            onHexClick = { hex -> handleHexClick(hex) }
+                            onHexClick = { hex -> handleHexClick(hex) },
                         )
 
                         // Toast notification
@@ -1622,14 +2450,14 @@ fun BugzApp() {
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(12.dp)
+                                    .padding(12.dp),
                             ) {
                                 Text(
                                     text = msg,
                                     color = Color.Black,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                 )
                             }
                         }
@@ -1639,7 +2467,7 @@ fun BugzApp() {
                             history = engine.history,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(12.dp)
+                                .padding(12.dp),
                         )
                     }
 
@@ -1653,8 +2481,22 @@ fun BugzApp() {
                         onSelectBug = { bug -> handleReserveSelect(bug) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(12.dp),
                     )
+                }
+
+                // Resume prompt shown over the setup screen when a saved game exists
+                if (isSetupOpen) {
+                    val save = resumeSave
+                    if (save != null) {
+                        ResumePromptDialog(
+                            onResume = { resumeLastGame(save) },
+                            onNewGame = {
+                                clearSave(context)
+                                resumeSave = null
+                            },
+                        )
+                    }
                 }
 
                 // New Game / Setup Modal
@@ -1666,7 +2508,7 @@ fun BugzApp() {
                         },
                         onDismiss = {
                             if (gameOver != null || engine.board.isNotEmpty()) isSetupOpen = false
-                        }
+                        },
                     )
                 }
 
@@ -1680,7 +2522,7 @@ fun BugzApp() {
                             gameOver = null
                             isDraw = false
                             isSetupOpen = true
-                        }
+                        },
                     )
                 }
             }
@@ -1710,8 +2552,9 @@ private fun pixelToHex(pos: Offset, center: Offset, radius: Float): AxialHex {
     val dr = abs(rr - r)
     val ds = abs(rs - s)
 
-    if (dq > dr && dq > ds) rq = -rr - rs
-    else if (dr > ds) rr = -rq - rs
+    if (dq > dr && dq > ds) {
+        rq = -rr - rs
+    } else if (dr > ds) rr = -rq - rs
 
     return AxialHex(rq, rr)
 }
@@ -1724,7 +2567,7 @@ fun HexCanvasBoard(
     pillbugTargetHex: AxialHex?,
     pillbugDestinations: List<AxialHex>,
     lastMovedHex: AxialHex?,
-    onHexClick: (AxialHex) -> Unit
+    onHexClick: (AxialHex) -> Unit,
 ) {
     var scale by remember { mutableStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
@@ -1777,7 +2620,7 @@ fun HexCanvasBoard(
                     val hex = pixelToHex(Offset(tap.x, tap.y), center, hexRadius)
                     onHexClick(hex)
                 }
-            }
+            },
     ) {
         val center = Offset(size.width / 2f + pan.x, size.height / 2f + pan.y)
         val hexRadius = baseRadius.toPx() * scale
@@ -1838,17 +2681,17 @@ fun HexCanvasBoard(
                 val emojiSizeSp = with(density) { (hexRadius * 1.05f).toSp() }
                 val layout = textMeasurer.measure(
                     AnnotatedString(topPiece.type.emoji),
-                    style = TextStyle(fontSize = emojiSizeSp)
+                    style = TextStyle(fontSize = emojiSizeSp),
                 )
                 drawText(
                     layout,
-                    topLeft = Offset(x - layout.size.width / 2f, y - layout.size.height / 2f)
+                    topLeft = Offset(x - layout.size.width / 2f, y - layout.size.height / 2f),
                 )
 
                 if (stackHeight > 1) {
                     val badge = textMeasurer.measure(
                         AnnotatedString(stackHeight.toString()),
-                        style = TextStyle(fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                        style = TextStyle(fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Bold),
                     )
                     val badgeCenter = Offset(x + hexRadius * 0.72f, y - hexRadius * 0.72f)
                     drawCircle(color = Color(0xFFF59E0B), radius = 12f, center = badgeCenter)
@@ -1856,8 +2699,8 @@ fun HexCanvasBoard(
                         badge,
                         topLeft = Offset(
                             badgeCenter.x - badge.size.width / 2f,
-                            badgeCenter.y - badge.size.height / 2f
-                        )
+                            badgeCenter.y - badge.size.height / 2f,
+                        ),
                     )
                 }
 
@@ -1866,19 +2709,19 @@ fun HexCanvasBoard(
                 drawCircle(
                     color = dotColor,
                     radius = 7f,
-                    center = Offset(x - hexRadius * 0.7f, y - hexRadius * 0.7f)
+                    center = Offset(x - hexRadius * 0.7f, y - hexRadius * 0.7f),
                 )
                 drawCircle(
                     color = if (topPiece.player == Player.ONE) Color(0xFFCBD5E1) else Color(0xFF64748B),
                     radius = 7f,
                     center = Offset(x - hexRadius * 0.7f, y - hexRadius * 0.7f),
-                    style = Stroke(width = 1.5f)
+                    style = Stroke(width = 1.5f),
                 )
             } else if (isValidDest || isPillbugDest) {
                 drawCircle(
                     color = Color(0xFF10B981),
                     radius = 9f,
-                    center = Offset(x, y)
+                    center = Offset(x, y),
                 )
             }
         }
@@ -1892,7 +2735,7 @@ fun ReserveBar(
     isEnabled: Boolean,
     queenDue: Boolean,
     onSelectBug: (BugType) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val grouped = reserve.groupBy { it.type }
     val colors = MaterialTheme.colorScheme
@@ -1901,11 +2744,11 @@ fun ReserveBar(
         shape = RoundedCornerShape(24.dp),
         color = colors.surface,
         tonalElevation = 8.dp,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
     ) {
         LazyRow(
             contentPadding = PaddingValues(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(grouped.entries.toList()) { entry ->
                 val bug = entry.key
@@ -1921,23 +2764,23 @@ fun ReserveBar(
                                 isSelected -> colors.primary
                                 !cardEnabled -> colors.background
                                 else -> colors.surfaceVariant
-                            }
+                            },
                         )
                         .border(
                             width = if (isSelected) 2.dp else 1.dp,
                             color = if (isSelected) colors.primary else colors.outline,
-                            shape = RoundedCornerShape(18.dp)
+                            shape = RoundedCornerShape(18.dp),
                         )
                         .clickable(enabled = cardEnabled) { onSelectBug(bug) }
                         .sizeIn(minHeight = 96.dp, minWidth = 112.dp)
                         .padding(horizontal = 12.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = bug.emoji,
                             fontSize = 46.sp,
-                            color = if (isSelected) colors.onPrimary else colors.onSurface
+                            color = if (isSelected) colors.onPrimary else colors.onSurface,
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
@@ -1945,7 +2788,7 @@ fun ReserveBar(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isSelected) colors.onPrimary else colors.onSurfaceVariant,
-                            maxLines = 1
+                            maxLines = 1,
                         )
                     }
 
@@ -1957,13 +2800,13 @@ fun ReserveBar(
                             .size(28.dp)
                             .clip(CircleShape)
                             .background(if (isSelected) colors.onPrimary else colors.primary),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "$count",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (isSelected) colors.primary else colors.onPrimary
+                            color = if (isSelected) colors.primary else colors.onPrimary,
                         )
                     }
                 }
@@ -1980,14 +2823,14 @@ fun MoveLogOverlay(history: List<MoveLogEntry>, modifier: Modifier = Modifier) {
 
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Toggle tab pinned to the side
         Surface(
             shape = RoundedCornerShape(10.dp),
             color = colors.surface.copy(alpha = 0.9f),
             border = BorderStroke(1.dp, colors.outline),
-            onClick = { expanded = !expanded }
+            onClick = { expanded = !expanded },
         ) {
             Text(
                 text = if (expanded) "❯" else "❮",
@@ -1995,7 +2838,7 @@ fun MoveLogOverlay(history: List<MoveLogEntry>, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Black,
                 color = colors.primary,
                 modifier = Modifier
-                    .padding(horizontal = 8.dp, vertical = 14.dp)
+                    .padding(horizontal = 8.dp, vertical = 14.dp),
             )
         }
 
@@ -2004,23 +2847,23 @@ fun MoveLogOverlay(history: List<MoveLogEntry>, modifier: Modifier = Modifier) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = colors.background.copy(alpha = 0.9f),
-                border = BorderStroke(1.dp, colors.outline)
+                border = BorderStroke(1.dp, colors.outline),
             ) {
                 LazyColumn(contentPadding = PaddingValues(8.dp)) {
                     item {
                         Text(
-                            "Move Log",
+                            I18n.tr("moveLog"),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = colors.onSurfaceVariant
+                            color = colors.onSurfaceVariant,
                         )
                     }
                     items(history.takeLast(8).reversed()) { entry ->
                         Text(
-                            text = "\${entry.turn}. P\${if (entry.player == Player.ONE) 1 else 2}: \${entry.text}",
+                            text = "${entry.turn}. ${I18n.tr("pLabel", "player" to if (entry.player == Player.ONE) 1 else 2)}: ${entry.text}",
                             fontSize = 11.sp,
                             color = colors.onSurface,
-                            modifier = Modifier.padding(vertical = 1.dp)
+                            modifier = Modifier.padding(vertical = 1.dp),
                         )
                     }
                 }
@@ -2034,7 +2877,7 @@ fun MoveLogOverlay(history: List<MoveLogEntry>, modifier: Modifier = Modifier) {
 fun SetupModal(
     currentSettings: GameSettings,
     onStart: (GameSettings) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     var mode by remember { mutableStateOf(currentSettings.mode) }
     var diff by remember { mutableStateOf(currentSettings.aiDifficulty) }
@@ -2051,74 +2894,82 @@ fun SetupModal(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("🐝 New Bugz Game", fontWeight = FontWeight.Bold) },
+        title = { Text(I18n.tr("setupTitle"), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Select Game Mode:", fontWeight = FontWeight.SemiBold)
+                Text(I18n.tr("selectMode"), fontWeight = FontWeight.SemiBold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = mode == GameMode.PASS_AND_PLAY,
                         onClick = { mode = GameMode.PASS_AND_PLAY },
-                        label = { Text("Pass & Play") }
+                        label = { Text(I18n.tr("modePassPlay")) },
                     )
                     FilterChip(
                         selected = mode == GameMode.AI,
                         onClick = { mode = GameMode.AI },
-                        label = { Text("VS AI Engine") }
+                        label = { Text(I18n.tr("modeVsAi")) },
                     )
                 }
 
                 if (mode == GameMode.AI) {
-                    Text("AI Difficulty:", fontWeight = FontWeight.SemiBold)
+                    Text(I18n.tr("aiDifficulty"), fontWeight = FontWeight.SemiBold)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AIDifficulty.values().forEach { d ->
                             FilterChip(
                                 selected = diff == d,
                                 onClick = { diff = d },
-                                label = { Text(d.name) }
+                                label = {
+                                    Text(
+                                        when (d) {
+                                            AIDifficulty.EASY -> I18n.tr("diffEasy")
+                                            AIDifficulty.MEDIUM -> I18n.tr("diffMedium")
+                                            AIDifficulty.HARD -> I18n.tr("diffHard")
+                                        },
+                                    )
+                                },
                             )
                         }
                     }
 
-                    Text("You play as:", fontWeight = FontWeight.SemiBold)
+                    Text(I18n.tr("youPlayAs"), fontWeight = FontWeight.SemiBold)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         FilterChip(
                             selected = humanColor == Player.ONE,
                             onClick = { humanColor = Player.ONE },
-                            label = { Text("White (P1)") },
-                            modifier = Modifier.weight(1f)
+                            label = { Text(I18n.tr("whiteP1")) },
+                            modifier = Modifier.weight(1f),
                         )
                         FilterChip(
                             selected = humanColor == Player.TWO,
                             onClick = { humanColor = Player.TWO },
-                            label = { Text("Black (P2)") },
-                            modifier = Modifier.weight(1f)
+                            label = { Text(I18n.tr("blackP2")) },
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
 
-                Text("Expansions:", fontWeight = FontWeight.SemiBold)
+                Text(I18n.tr("expansions"), fontWeight = FontWeight.SemiBold)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = mosquito,
                         onClick = { mosquito = !mosquito },
-                        label = { Text("🦟 Mosquito") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text(I18n.tr("expMosquito")) },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     FilterChip(
                         selected = ladybug,
                         onClick = { ladybug = !ladybug },
-                        label = { Text("🐞 Ladybug") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text(I18n.tr("expLadybug")) },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     FilterChip(
                         selected = pillbug,
                         onClick = { pillbug = !pillbug },
-                        label = { Text("💊 Pillbug") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text(I18n.tr("expPillbug")) },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -2131,17 +2982,17 @@ fun SetupModal(
                             mode = mode,
                             aiDifficulty = diff,
                             expansions = ExpansionsConfig(mosquito, ladybug, pillbug),
-                            humanColor = humanColor
-                        )
+                            humanColor = humanColor,
+                        ),
                     )
-                }
+                },
             ) {
-                Text("Start Match")
+                Text(I18n.tr("startMatch"))
             }
         },
         dismissButton = {
-            TextButton(onClick = { showRules = true }) { Text("📖 Learn to Play") }
-        }
+            TextButton(onClick = { showRules = true }) { Text(I18n.tr("learnToPlay")) }
+        },
     )
 }
 
@@ -2149,76 +3000,63 @@ fun SetupModal(
 fun RulesDialog(onClose: () -> Unit) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("How to Play Bugz", fontWeight = FontWeight.Bold) },
+        title = { Text(I18n.tr("rulesTitle"), fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    "🎯 Goal: Surround the opponent's Queen Bee with pieces on all six sides. " +
-                        "First to do so wins; both surrounded at once is a draw.",
-                    fontSize = 13.sp
+                    I18n.tr("rulesGoal"),
+                    fontSize = 13.sp,
                 )
-                Text("📜 Core Rules", fontWeight = FontWeight.Bold)
+                Text(I18n.tr("rulesCoreTitle"), fontWeight = FontWeight.Bold)
                 Text(
-                    "• Play one piece per turn (placement) or move one of your pieces.\\n" +
-                        "• Your Queen Bee must be introduced by your 4th turn.\\n" +
-                        "• Your first piece is placed anywhere; later pieces must be placed adjacent " +
-                        "to one of your pieces. Except for your second placement, pieces may not be " +
-                        "placed touching an opponent's piece.\\n" +
-                        "• The swarm must always stay connected. You may never move a piece that would " +
-                        "split the swarm, and you may not move a piece into a gap unless it still fits " +
-                        "the freedom-to-move rule (no squeezing between stacked pieces).",
-                    fontSize = 13.sp
+                    I18n.tr("rulesCoreBody"),
+                    fontSize = 13.sp,
                 )
-                Text("🦗 Insect Movements", fontWeight = FontWeight.Bold)
+                Text(I18n.tr("rulesInsectsTitle"), fontWeight = FontWeight.Bold)
 
                 Text(
-                    "🐝 Queen Bee — moves exactly 1 hex per turn.",
-                    fontSize = 13.sp
+                    I18n.tr("insectQueen"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🕷️ Spider — crawls exactly 3 hexes along the outside edge, never retracing.",
-                    fontSize = 13.sp
+                    I18n.tr("insectSpider"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🪲 Beetle — moves 1 hex and can climb on top of other pieces (including a " +
-                        "Queen) to block them; a beetle on top moves like a beetle over the stack.",
-                    fontSize = 13.sp
+                    I18n.tr("insectBeetle"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🦗 Grasshopper — jumps in a straight line over at least one piece, landing on " +
-                        "the first empty hex in that line.",
-                    fontSize = 13.sp
+                    I18n.tr("insectGrasshopper"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🐜 Soldier Ant — may slide any number of hexes along the outside of the swarm.",
-                    fontSize = 13.sp
+                    I18n.tr("insectAnt"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🦟 Mosquito — copies the movement (or pillbug ability) of any piece it touches.",
-                    fontSize = 13.sp
+                    I18n.tr("insectMosquito"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🐞 Ladybug — moves exactly 2 hexes on top of the swarm, then 1 hex back down " +
-                        "to the board (may land on empty board hexes).",
-                    fontSize = 13.sp
+                    I18n.tr("insectLadybug"),
+                    fontSize = 13.sp,
                 )
                 Text(
-                    "🪳 Pillbug — may not move itself, but it can move an adjacent enemy or friendly " +
-                        "piece 2 hexes: up onto itself, then down into an adjacent empty space. The " +
-                        "moved piece is stunned and cannot move on the opponent's next turn.",
-                    fontSize = 13.sp
+                    I18n.tr("insectPillbug"),
+                    fontSize = 13.sp,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onClose) { Text("Got it") }
-        }
+            TextButton(onClick = onClose) { Text(I18n.tr("gotIt")) }
+        },
     )
 }
 
@@ -2227,25 +3065,71 @@ fun GameOverDialog(
     winner: Player?,
     isDraw: Boolean,
     onRematch: () -> Unit,
-    onNewSetup: () -> Unit
+    onNewSetup: () -> Unit,
 ) {
-    val title = if (isDraw) "Draw!" else "Player \${if (winner == Player.ONE) 1 else 2} Wins!"
+    val title = if (isDraw) {
+        I18n.tr("overDrawTitle")
+    } else {
+        I18n.tr("overWinTitle", "n" to if (winner == Player.ONE) 1 else 2)
+    }
 
     AlertDialog(
         onDismissRequest = {},
         title = { Text("🏆 $title", fontWeight = FontWeight.Bold) },
         text = {
             Text(
-                if (isDraw) "Both Queens are surrounded. It's a draw!"
-                else "The Queen of Player \${if (winner == Player.ONE) 2 else 1} is surrounded. Well played!"
+                if (isDraw) {
+                    I18n.tr("overDrawBody")
+                } else {
+                    I18n.tr("overWinBody", "n" to if (winner == Player.ONE) 2 else 1)
+                },
             )
         },
         confirmButton = {
-            Button(onClick = onRematch) { Text("Rematch") }
+            Button(onClick = onRematch) { Text(I18n.tr("rematch")) }
         },
         dismissButton = {
-            TextButton(onClick = onNewSetup) { Text("New Game Setup") }
+            TextButton(onClick = onNewSetup) { Text(I18n.tr("newSetup")) }
+        },
+    )
+}
+
+@Composable
+fun LanguageSwitcher() {
+    Box {
+        var menuOpen by remember { mutableStateOf(false) }
+        TextButton(onClick = { menuOpen = true }) {
+            Text(I18n.lang.nativeName, fontSize = 12.sp)
         }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            Lang.values().forEach { lang ->
+                DropdownMenuItem(
+                    text = { Text(lang.nativeName) },
+                    onClick = {
+                        I18n.lang = lang
+                        menuOpen = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ResumePromptDialog(
+    onResume: () -> Unit,
+    onNewGame: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("▶️ ${I18n.tr("resumeTitle")}", fontWeight = FontWeight.Bold) },
+        text = { Text(I18n.tr("resumeBody")) },
+        confirmButton = {
+            Button(onClick = onResume) { Text(I18n.tr("resumeBtn")) }
+        },
+        dismissButton = {
+            TextButton(onClick = onNewGame) { Text(I18n.tr("newGameBtn")) }
+        },
     )
 }
 
@@ -2261,4 +3145,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-`;

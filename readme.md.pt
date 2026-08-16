@@ -1,0 +1,59 @@
+# 🐝 Bugz Strategy
+
+**Bugz Strategy** é um jogo de estratégia hexagonal por turnos para dois jogadores. Lidere seu enxame de insetos: posicione e mova suas peças ao redor da abelha rainha e tente cercar a rainha do oponente antes que ele cerque a sua.
+
+## Recursos
+
+- Estratégia hexagonal para dois jogadores com oponentes IA e aplicação completa das regras.
+- Modos **Passa e joga** (mesmo dispositivo) e **VS IA** com três dificuldades (Fácil / Média / Difícil).
+- Aplicação completa das regras com destaque de movimentos legais, aviso do limite da rainha e passes forçados automáticos.
+- Expansões de regras: **Pernilongo** 🦟, **Joaninha** 🐞, **Bicho-bola** 💊.
+- Desfazer ilimitado, registro de movimentos e tabuleiro hexagonal com zoom e deslocamento.
+- **Visualizador e exportador de código Kotlin** integrado (o jogo também é um app nativo de Jetpack Compose).
+- Disponível em **7 idiomas** com tema claro e escuro.
+
+## Como jogar
+
+**Objetivo:** cerque a abelha rainha do oponente com suas peças nos seis lados. Quem conseguir primeiro vence; se ambas as rainhas forem cercadas ao mesmo tempo, é empate.
+
+No seu turno você **coloca um inseto** da sua reserva ou **move um dos seus insetos**:
+
+- Sua abelha rainha deve ser introduzida até o seu **4º turno**.
+- Sua primeira peça vai em qualquer lugar; as seguintes devem tocar uma de suas peças (e, exceto a segunda colocação, não podem tocar peças do oponente).
+- O enxame deve permanecer sempre conectado: você nunca pode dividi-lo nem enfiar uma peça em uma fresta entre peças empilhadas.
+
+| Inseto | Movimento |
+|--------|-----------|
+| 🐝 Abelha rainha | Exatamente 1 hexágono por turno |
+| 🕷️ Aranha | Exatamente 3 hexágonos pela borda externa, sem retroceder |
+| 🪲 Besouro | 1 hexágono; pode subir sobre outras peças (até a rainha) para bloqueá-las |
+| 🦗 Gafanhoto | Salta em linha reta sobre pelo menos uma peça e pousa no primeiro hexágono vazio |
+| 🐜 Formiga soldado | Desliza qualquer distância pelo exterior do enxame |
+| 🦟 Pernilongo | Copia o movimento (ou a habilidade do bicho-bola) de qualquer peça que toque |
+| 🐞 Joaninha | 2 hexágonos sobre o enxame e depois 1 de volta ao tabuleiro |
+| 🪳 Bicho-bola | Não se move; move uma peça adjacente 2 hexágonos e a deixa atordoada para o próximo turno do oponente |
+
+## Modos de jogo
+
+- **Passa e joga** — dois jogadores compartilham um dispositivo.
+- **VS IA** — jogue contra o motor em Fácil (aleatório), Média (gananciosa) ou Difícil (busca minimax profunda).
+
+## Idiomas
+
+Inglês, espanhol, português do Brasil, francês, alemão, japonês e chinês — selecionáveis no jogo.
+
+## Plataformas
+
+- **Web:** Vite + React 19 + TypeScript + Tailwind CSS.
+- **Android:** app nativo de Jetpack Compose (pacote `com.tecepeipe.bugzstrategy`), o mesmo motor da versão web, com salvar/retomar e verificações de qualidade.
+
+## Compilação
+
+```bash
+npm install        # a partir de android-tools/ (dependências compartilhadas)
+npm run dev        # servidor de desenvolvimento Vite na porta 3000
+npm run lint       # verificação de tipos (tsc --noEmit)
+npm run build      # bundle estático em dist/
+
+android-tools/build_apk.sh /home/fabricio/bugz-strategy   # APK nativo Android
+```

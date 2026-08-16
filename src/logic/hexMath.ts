@@ -1,4 +1,4 @@
-import { AxialHex, hexKey } from '../types/hive';
+import { AxialHex, hexKey } from '../types/bugz';
 
 export const HEX_DIRECTIONS: AxialHex[] = [
   { q: 1, r: 0 },   // East/South-East

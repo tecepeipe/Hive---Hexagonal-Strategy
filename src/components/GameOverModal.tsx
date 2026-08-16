@@ -1,6 +1,7 @@
 import React from 'react';
-import { Player } from '../types/hive';
+import { Player } from '../types/bugz';
 import { Trophy, RefreshCw, Flag } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface GameOverModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onRestart,
   onNewGameSetup,
 }) => {
+  const { t } = useI18n();
   if (!isOpen) return null;
 
   return (
@@ -26,16 +28,16 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
         <h2 className="text-2xl font-black text-slate-100 mb-2">
           {winner === 'DRAW'
-            ? '🤝 Mutual Draw!'
+            ? t('drawTitle')
             : winner === 1
-            ? '🎉 Player 1 (White) Wins!'
-            : '🎉 Player 2 (Black) Wins!'}
+            ? t('p1WinTitle')
+            : t('p2WinTitle')}
         </h2>
 
         <p className="text-xs text-slate-400 mb-6">
           {winner === 'DRAW'
-            ? 'Both Queen Bees were completely surrounded simultaneously!'
-            : `The opposing Queen Bee has been completely surrounded on all 6 sides!`}
+            ? t('drawDesc')
+            : t('winDesc')}
         </p>
 
         <div className="flex flex-col gap-2">
@@ -44,14 +46,14 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-amber-500/20"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Play Again</span>
+            <span>{t('playAgain')}</span>
           </button>
 
           <button
             onClick={onNewGameSetup}
             className="w-full py-3 rounded-2xl border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-800 transition-colors"
           >
-            Match Options / Difficulty
+            {t('matchOptions')}
           </button>
         </div>
       </div>

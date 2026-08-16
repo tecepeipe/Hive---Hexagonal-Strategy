@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { MoveLogEntry } from '../types/hive';
+import { MoveLogEntry } from '../types/bugz';
 import { ChevronDown, ChevronUp, History } from 'lucide-react';
+import { useI18n } from '../utils/i18n';
 
 interface MoveLogProps {
   logs: MoveLogEntry[];
 }
 
 export const MoveLog: React.FC<MoveLogProps> = ({ logs }) => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   return (
@@ -17,7 +19,7 @@ export const MoveLog: React.FC<MoveLogProps> = ({ logs }) => {
       >
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-amber-400" />
-          <span>Move History ({logs.length})</span>
+          <span>{t('moveHistory', { n: logs.length })}</span>
         </div>
         {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
       </button>
@@ -25,7 +27,7 @@ export const MoveLog: React.FC<MoveLogProps> = ({ logs }) => {
       {isOpen && (
         <div className="max-h-48 overflow-y-auto p-3 divide-y divide-slate-800/60 text-xs text-slate-400">
           {logs.length === 0 ? (
-            <p className="text-center italic py-2 text-slate-500">No moves recorded yet.</p>
+            <p className="text-center italic py-2 text-slate-500">{t('noMoves')}</p>
           ) : (
             [...logs].reverse().map((entry, idx) => (
               <div key={idx} className="py-1.5 flex items-start justify-between gap-2">
